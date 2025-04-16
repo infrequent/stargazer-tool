@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+        font-family: Arial,Helvetica Neue,Helvetica,sans-serif;
+        }
+    </style>
+
+    <title>Stargazer Tool dev</title>
+</head>
+<body>
+    <h2>Stargazer Tool<sup><small> dev</small></sup></h2>
+
+
+    <!-- Textbox for user input -->
+    <div id="inputContainer">
+        <label for="csvInput">Enter text in DSV format using a semicolon ; as follows: <sup>World<sub>;</sub>Transcript</sup></label>
+        <br />
+        <label for="csvInput">(e.g., 39<sub>;</sub>You see a shooting star! ..... to be of average size.):</label>
+        <!-- Was CSV but one of the transcripts(Piscatoris) has a comma so hence DSV with semicolon -->
+        <input type="text" id="csvInput" placeholder="Enter DSV values here">
+        <button id="addRowBtn">Add Row</button>
+        <button id="addRowBtnPrpt">Add Row (Prompt)</button>
+    </div>
+    <br />
+
+    <table id="datatable" border="1">
+        <thead>
+            <tr>
+                <th>&nbsp;World&nbsp;</th>
+                <th>&nbsp;Telescope Text Extraction&nbsp;</th>
+                <th>&nbsp;Timestamp&nbsp;</th>
+                <th>&nbsp;Actions&nbsp;</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Table rows will be added here -->
+        </tbody>
+    </table>
+    <br />
+    == README ==
+    <small>
+    <br />
+    This tool is intended to be used with the aid of the Microsoft PowerToys, Text Extractor.<br />
+    <br />
+    Usage:<br />
+    Enter the world number, followed by a semicolon ; then whatever was transcribed by the Text Extractor.<br />
+    Both 'Add Row' buttons will do the same thing, 'Add Row' is attached to the textbox to the left, <br />
+    'Add Row (Prompt)' will popup a prompt dialog, which will allow ENTER to submit.<br />
+    Do not delay entering the data, as the message input time is used to, calculate when the star will land.<br />
+    <br />
+
+    Also to note, tier 1 & 3 telescopes are recommended,<br />
+    tier 2 telescope is mapped as follows for the call bot as no tier 2 telescope sizes:
+    <pre>
+    [Very small   (1/2)] : [Small   (1/2/3)]
+    
+    [Fairly small (3/4)] : [Small   (1/2/3)]
+    
+    [Fairly big (5/6/7)] : [Average (4/5/6)]
+    
+    [Very big  (8/9/10)] : [Big  (7/8/9/10)]
+    </pre>
+    As such S7 stars on a T2 scope will be mapped as Average in this tool, read more: <a href="https://runescape.wiki/w/Shooting_Star#Locating">https://runescape.wiki/w/Shooting_Star#Locating</a><br />
+    <br />
+    <a href="https://learn.microsoft.com/en-us/windows/powertoys/text-extractor">https://learn.microsoft.com/en-us/windows/powertoys/text-extractor</a> With the activation shortcut (default: ⊞ Win+Shift+T)<br />
+    <br />
+    Microsoft PowerToys: <a href="https://learn.microsoft.com/en-us/windows/powertoys/">https://learn.microsoft.com/en-us/windows/powertoys/</a><br />
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="https://github.com/microsoft/PowerToys">https://github.com/microsoft/PowerToys</a><br />
+    <br />
+    If you are using Text Grab <a href="https://github.com/TheJoeFin/Text-Grab">https://github.com/TheJoeFin/Text-Grab</a> instead of PowerToys, it is recommended to:
+    <pre>
+    - Default Launch Window: Full Screen
+    - Fullsreen Grab (⊞ Win+Shift+F) or Copy Last Region Selection (⊞ Win+Ctrl+Shift+F)
+    - Turn OFF, "Correct common confusions between numbers and letters" & "Keep recent history of Grabs and Edit Text Windows"
+    </pre>
+    </small>
+
+
+
+    <script>
+        function handleInput(input) {
+            // Get the input value from the textbox or prompt
+
+            if (input) {
+                // Split the input into an array based on commas
+                let columns = input.split(";");
+
+                // Check if the input has exactly 2 values
+                if (columns.length === 2) {
+                    // Get the table body
+                    let table = document.getElementById("datatable").getElementsByTagName("tbody")[0];
+
+                    // Create a new row
+                    let newRow = table.insertRow();
+
+                    // Add cells with the input data
+                    let cell1 = newRow.insertCell(0);
+                    cell1.textContent = columns[0].trim();
+
+                    let cell2 = newRow.insertCell(1);
+                    cell2.textContent = columns[1].trim();
+
+                    // Add a cell for the timestamp
+                    let timestampCell = newRow.insertCell(2);
+                    // Gets the current UNIX time, calculates and strips to the minute.
+                    let currentTimestamp = Math.floor((Date.now()/1000)/60)*60*1000;
+                    timestampCell.textContent = currentTimestamp;
+
+                    // Add a cell with the button
+                    let actionCell = newRow.insertCell(3);
+                    let buttonGC = document.createElement("button");
+                    buttonGC.textContent = "Generate & Copy";
+
+                    // Add click event to the button
+                    buttonGC.addEventListener("click", function() {
+                        let column1Data = cell1.textContent;
+                        let inputphrase = cell2.textContent;
+
+                        //========================== LOCATION_START
+                        // elseif ladder to determine the location
+                        let location_of_star = "loction";
+
+                        if(inputphrase.indexOf("Anachronia") > -1 || inputphrase.indexOf("onia") > -1){
+                            location_of_star = "Anachronia";
+                        }
+                        else if(inputphrase.indexOf("Asgarnia") > -1 || inputphrase.indexOf("rnia") > -1){
+                            location_of_star = "Asgarnia";
+                        }
+                        else if(inputphrase.indexOf("Ashdale") > -1 || inputphrase.indexOf("dale") > -1){
+                            location_of_star = "Ashdale";
+                        }
+                        else if(inputphrase.indexOf("Crandor") > -1 || inputphrase.indexOf("amja") > -1){
+                            location_of_star = "Crandor/Karamja";
+                        }
+                        else if(inputphrase.indexOf("Daemonheim") > -1 || inputphrase.indexOf("sula") > -1){
+                            location_of_star = "Daemonheim";
+                        }
+                        else if(inputphrase.indexOf("Feldip") > -1 || inputphrase.indexOf("ills") > -1){
+                            location_of_star = "Feldip Hills";
+                        }
+                        else if(inputphrase.indexOf("Fremennik") > -1 || inputphrase.indexOf("unar") > -1){
+                            location_of_star = "Fremennik/Lunar Isle";
+                        }
+                        else if(inputphrase.indexOf("Kandarin") > -1 || inputphrase.indexOf("arin") > -1){
+                            location_of_star = "Kandarin";
+                        }
+                        else if(inputphrase.indexOf("Desert") > -1 || inputphrase.indexOf("dian") > -1){
+                            location_of_star = "Kharidian Desert";
+                        }
+                        else if(inputphrase.indexOf("Grove") > -1 || inputphrase.indexOf("ost") > -1){
+                            location_of_star = "Lost Grove";
+                        }
+                        else if(inputphrase.indexOf("Menaphos") > -1 || inputphrase.indexOf("phos") > -1){
+                            location_of_star = "Menaphos";
+                        }
+                        else if(inputphrase.indexOf("Misthalin") > -1 || inputphrase.indexOf("alin") > -1){
+                            location_of_star = "Misthalin";
+                        }
+                        else if(inputphrase.indexOf("Morytania") > -1 || inputphrase.indexOf("armless") > -1){
+                            location_of_star = "Morytania/Mos Le'Harmless";
+                        }
+                        else if(inputphrase.indexOf("Piscatoris") > -1 || inputphrase.indexOf("nnwn") > -1){
+                            location_of_star = "Piscatoris/Gnome/Tirannwn";
+                        }
+                        else if(inputphrase.indexOf("Tuska") > -1 || inputphrase.indexOf("uska") > -1){
+                            location_of_star = "Tuska";
+                        }
+                        else if(inputphrase.indexOf("Wilderness") > -1 || inputphrase.indexOf("derness") > -1){
+                            location_of_star = "Wilderness";
+                        }
+                        else {
+                            location_of_star = "ERROR-UNDEF-LOC";
+                        }
+                        //========================== LOCATION_END
+                        
+                        //========================== TIME_START
+                        const time_text_start = "next";
+                        const time_text_end = "to ";
+                        let time_text_startIndex = inputphrase.indexOf(time_text_start) + 4;
+                        let time_text_endIndex = inputphrase.indexOf(time_text_end);
+
+                        // Debug see the substring
+                        // Substring should only contain the first section of time window ("1 hour 40 minutes" to 2 hours 10 minutes)
+                        // inputphrase.substring(time_text_startIndex,time_text_endIndex)
+
+                        let hashours_flag = inputphrase.substring(time_text_startIndex,time_text_endIndex).indexOf("hour")
+                        let multihours_flag = inputphrase.substring(time_text_startIndex,time_text_endIndex).indexOf("hours")
+                        // Get minutes
+                        let minutes_to_star = 0;
+                        let minutes_index = inputphrase.substring(time_text_startIndex,time_text_endIndex).indexOf("minute")
+                        if(multihours_flag>-1){
+                            minutes_to_star = parseInt( inputphrase.substring(time_text_startIndex,time_text_endIndex).substring(multihours_flag+5,minutes_index));
+                            minutes_to_star += 120;
+                        } 
+                        else if (multihours_flag===-1 && hashours_flag>-1){
+                            minutes_to_star = parseInt( inputphrase.substring(time_text_startIndex,time_text_endIndex).substring(hashours_flag+4,minutes_index));
+                            minutes_to_star += 60;
+                        } 
+                        else if(minutes_index===-1){//when the timer is sub 1 hour, the time is diaplayed as (45 to 50 minutes)
+                            minutes_to_star = parseInt( inputphrase.substring(time_text_startIndex,time_text_endIndex));
+                            //console.log(minutes_to_star);
+                        } 
+                        else {
+                            minutes_to_star = parseInt( inputphrase.substring(time_text_startIndex,time_text_endIndex).substring(0,minutes_index));
+                        }
+                        //========================== TIME_END
+
+                        //========================== STAR_SIZE_START
+                        const size_text_start = "be";
+                        let size_text_startIndex = inputphrase.indexOf(size_text_start) + 2;
+                        let size_of_star = "ERROR-UNDEF-SIZE";
+                        if(inputphrase.substring(size_text_startIndex).indexOf("size") === 1){
+                            // Tier 3 telescope
+                            size_of_star = parseInt( inputphrase.substring(size_text_startIndex+5));
+                        }
+                        else {
+                            // if ladder to find size text
+                            // Tier 1 telescope
+                            if(inputphrase.substring(size_text_startIndex).indexOf("small") > -1){
+                                size_of_star = "Small";
+                            }
+                            if(inputphrase.substring(size_text_startIndex).indexOf("average") > -1){
+                                size_of_star = "Average";
+                            }
+                            if(inputphrase.substring(size_text_startIndex).indexOf("big") > -1){
+                                size_of_star = "Big";
+                            }
+                            // Tier 2 telescope
+                            // Placed after to override if using a tier 2 telescope values, don't use this
+                            if(inputphrase.substring(size_text_startIndex).indexOf("very small") > -1){
+                                size_of_star = "Small";
+                            }
+                            if(inputphrase.substring(size_text_startIndex).indexOf("fairly small") > -1){
+                                size_of_star = "Small";
+                            }
+                            if(inputphrase.substring(size_text_startIndex).indexOf("fairly big") > -1){
+                                size_of_star = "Average";
+                            }
+                            if(inputphrase.substring(size_text_startIndex).indexOf("very big") > -1){
+                                size_of_star = "Big";
+                            }
+                        }
+                        //========================== STAR_SIZE_END
+
+                        //========================== RELATIVE_TIME_START
+                        // Calculate "relative-time"
+                        // Convert the minutes to milliseconds
+                        let the_skyfall = minutes_to_star *60*1000;
+                        // Add the time of the message + milliseconds to when star will fall
+                        let when_it_crumbles = Number(timestampCell.textContent) + the_skyfall;
+                        // Get the current time of export to the last whole minute
+                        let we_will_stand_tall = Math.floor((Date.now()/1000)/60)*60*1000;
+                        // Minus the time when the star will fall to current time
+                        let face_it_all_together = when_it_crumbles - we_will_stand_tall;
+                        // Convert the time milliseconds back to minutes
+                        let at_skyfall = face_it_all_together/60/1000;
+                        // Catch all, of 1 minute as the minimum
+                        if(at_skyfall < 1){
+                            at_skyfall = 1;
+                        }
+                        if(isNaN(at_skyfall)){
+                            at_skyfall = 1;
+                        }
+                        //console.log(at_skyfall)
+                        //========================== RELATIVE_TIME_END
+
+                        //========================== DATA TO SEND TO DISCORD
+                        // Format  /call world: 50 region: Kharidian Desert size: 8 relative-time: 50
+                        // Generate the formatted string
+                        let generatedString = `/call world: ${column1Data} region: ${location_of_star} size: ${size_of_star} relative-time:${at_skyfall}`;
+
+                        // Copy to clipboard
+                        navigator.clipboard.writeText(generatedString).then(() => {
+                            alert("Copied to clipboard: " + generatedString);
+                        }).catch((err) => {
+                            console.error("Error copying to clipboard: ", err);
+                        });
+                    });
+
+                    actionCell.appendChild(buttonGC);
+
+                    // Clear the textbox after adding the row
+                    document.getElementById("csvInput").value = "";
+                } else {
+                    alert("Please enter exactly 2 values separated by a Semicolon.");
+                }
+            }
+        }
+        // Event listener for the textbox button
+        document.getElementById("addRowBtn").addEventListener("click", function () {
+            // Get the input value from the textbox
+            let input = document.getElementById("csvInput").value;
+            handleInput(input);
+        });
+
+        // Event listener for the prompt button
+        document.getElementById("addRowBtnPrpt").addEventListener("click", function () {
+            // Prompt the user to enter CSV data
+            let input = prompt("Enter text in DSV format (e.g., World;Transcript):");
+            handleInput(input);
+        });
+    </script>
+</body>
+</html>
