@@ -1,5 +1,8 @@
 <!DOCTYPE html>
-<html>
+<!-- https://github.com/infrequent/stargazer-tool -->
+<!-- stargazer-tool and stargazer-tool-web is licensed under the MIT License -->
+<!-- The MIT License applies to the entire page -->
+<html lang="en">
 <head>
     <style>
         body {
@@ -8,9 +11,14 @@
         }
         .monospace {
             /*Monospace Font, for toggle*/
-            font-family: Consolas, Monaco, monospace;
+            font-family: Consolas, SF Mono, monospace;
         }
         .statusBox {
+            /*Main Status box*/
+            float: right;
+            width: 300px;
+        }
+        .statusBoxA {
             /*Main Status box*/
             float: right;
             width: 300px;
@@ -19,7 +27,7 @@
             border-radius: 4px;
         }
         .inputTextboxBorder {
-            /*Used for inidcation colour boxes, e.g., Activity Indicator*/
+            /*Used for indication colour boxes, e.g., Activity Indicator*/
             border: 1px solid;
             padding: 1px;
             border-radius: 3px;
@@ -46,10 +54,19 @@
             overflow-wrap: normal; /* Prevents breaking at hyphens */
             word-break: keep-all; /* Prevents breaking words */
         }
+        .input_header {
+            position: sticky;
+            top: 0;
+            overflow: hidden;
+        }
+        .ih_default {
+            background-color: rgba(255, 255, 255, 1); /* Opaque white */
+        }
     </style>
     <title>Stargazer Tool</title>
 </head>
 <body>
+    <div id="input_header" class="input_header ih_default">
     <h2 id="heading">Stargazer Tool</h2>
     <script>
         // Handle titles and headings
@@ -59,25 +76,42 @@
             document.getElementById("heading").innerHTML += "<sup><small> dev</small></sup>";
         }
         else{
-            document.title += " v1.16";
-            document.getElementById("heading").innerHTML += "<sup><small> version 1.16</small></sup>";
+            document.title += " v1.23";
+            document.getElementById("heading").innerHTML += "<sup><small> version 1.23</small></sup>";
         }
-        // Handle Activity Indicator, Set some varibles top of page.
+        // Handle Activity Indicator, Set some variables top of page.
         let lastWorldScoped = "N/A";
         let activityIndChange = "N/A";
         let activityIndColour = 0;
     </script>
     
     <div class="statusBox">
+        <div class="statusBoxA">
         <div style="float: right;">
             <div style="padding-bottom: 4px;"><button id="toggleTheme">☀️/🌑</button></div>
             <button id="toggleMonospace" >🔤/🔡</button>
         </div>
         <div id="utc_clock"></div>
-        <div id="activityBlock"><a title="Visual indicator, you added a new scoping call. ">Activity:</a> <input type="text" class="inputTextboxBorder" id="statusCell" placeholder="  ☄️" size="4" disabled></div>
+        <div id="status_lastworld"></div>
+        <div id="activityBlock" style="padding-bottom: 4px;"><a title="Visual indicator, you added a new scoping call. ">Activity:</a> <input type="text" class="inputTextboxBorder" id="statusCell" placeholder="  ☄️" size="4" disabled></div>
+        </div>
+        <div class="statusBoxNull" style="padding: 0px; font-size:1px;" >&nbsp;</div>
+
+        <div class="statusBoxB">
+            <fieldset>
+                <legend>Settings:</legend>
+                <input type="checkbox" id="chbx1" name="chbx1" checked />
+                <label for="chbx1"> Lock input header</label><br />
+                <input type="checkbox" id="chbx2" name="chbx2" />
+                <label for="chbx2"> Generate on paste</label><br />
+                <input type="checkbox" id="chbx3" name="chbx3" checked />
+                <label for="chbx3"> Invert table entry</label><br />
+            </fieldset>
+        </div>
     </div>
 
-    <!-- Textbox for user input -->
+        <!-- Textbox for user input -->
+        <!-- This may be phased out in the future -->
     <div id="inputContainer">
         <label for="csvInput">Enter text in DSV format using a semicolon ; as follows: <sup>World<sub>;</sub>Transcript</sup></label>
         <br />
@@ -91,10 +125,11 @@
     <div id="inputContainer2">
         <label title="'Full Transcript' Telescope message along with top World number interface.">Add Row, Full Transcript (FT):</label>
         <button id="addRowFullParse">Add Row, FT (Prompt)</button><br />
-        <textarea id="expInput" class="defaultTextBoxes" onpaste="onPasteExp();" onclick="this.select();" placeholder="PASTE AREA, Paste here!&#13;&#10;&#13;&#10;You see a shooting star! ... ... looks to be size 10. Friends List RuneScape 39" rows="4" cols="50"></textarea>   
+        <textarea id="expInput" class="defaultTextBoxes" onpaste="onPasteExp();" onclick="this.select();" placeholder="PASTE AREA, Paste here!&#13;&#10;&#13;&#10;You see a shooting star! ... ... looks to be size 10. Friends List RuneScape 39" rows="7" cols="50"></textarea>
     </div>
     <br />
-    
+    </div>
+
     <table id="datatable" border="1">
         <thead>
             <tr>
@@ -115,15 +150,15 @@
     <a title=" ">Generate OK:</a> <input type="text" class="inputTextboxBorder" style="background-color: PaleGreen;" placeholder="    " size="4" disabled> |
     <a title="Check Error Field; World, Location and or Star-Size; Export generated with Errors.">ERROR:</a> <input type="text" class="inputTextboxBorder" style="background-color: LightCoral;" placeholder="    " size="4" disabled> |
     <a title="Indication row exported with relative time ≤ 1">Time ≤ 1:</a> <input type="text" class="inputTextboxBorder" style="background-color: #FED8B1;" placeholder="    " size="4" disabled> ]<br />
-    ES Error Key:&nbsp;&nbsp;[W:World]&emsp;[L:Location]&emsp;[S:Size]&emsp;[T+NaN:Time] <br />
+    ES Error Key:&nbsp;&nbsp;[W:World]&emsp;[L:Location]&emsp;[S:Size]&emsp;[T+NaN:Time]&emsp;[OT:Time > 2hr?] <br />
     <br />
-    == README 1.16 ==
+    == README ==
     <small>
     <br />
-    Version 1.16 of this tool is intended to be used with the aid of 'Text Grab', with 'Capture Last Region Selection' option.<br />
+    This tool is intended to be used with the aid of 'Text Grab', with 'Capture Last Region Selection' option.<br />
     Text Grab is what Microsoft PowerToys, Text Extractor is based on.<br />
     <br />
-    However this tool, can be essentially be used, with any OCR text extraction tool. e.g., macOS TRex OCR/Text Sniper.<br />
+    However, this tool can essentially be used with any OCR text extraction software. e.g., macOS TRex OCR / Text Sniper.<br />
     <br />
     Usage:<br />
     Prepare your game window to have the top of your friends list, to be adjacent or below the telescope message.<br />
@@ -137,7 +172,7 @@
     When using Text Grab <a href="https://github.com/TheJoeFin/Text-Grab">https://github.com/TheJoeFin/Text-Grab</a>, it is recommended to:
     <pre>
     - Default Launch Window: Full Screen
-    - Fullsreen Grab (⊞ Win+Shift+F) or Copy Last Region Selection (⊞ Win+Ctrl+Shift+F)
+    - Fullscreen Grab (⊞ Win+Shift+F) or Copy Last Region Selection (⊞ Win+Ctrl+Shift+F)
     - Turn OFF, "Correct common confusions between numbers and letters" & 
     In order:
         1. With history ON, capture the area where the world number and telescope message is, to SET the "Last Region Selection"
@@ -168,7 +203,13 @@
                     let table = document.getElementById("datatable").getElementsByTagName("tbody")[0];
 
                     // Create a new row
-                    let newRow = table.insertRow();
+                    let newRow;
+                    if(funcChb3()){
+                        newRow = table.insertRow(0);
+                    }
+                    else{
+                        newRow = table.insertRow();
+                    }
 
                     // Add cells with the input data
                     let cell1 = newRow.insertCell(0);
@@ -197,6 +238,13 @@
 
                     actionCell.appendChild(buttonGC);
 
+                    activityUpdate(); // Trigger a lookup of activity
+
+                    // Option to generate to clipboard on input
+                    if(funcChb2()){
+                        generateDiscord(cell1,cell2,timestampCell,esCell,actionCell);
+                    }
+
                     // Clear the textbox after adding the row
                     document.getElementById("csvInput").value = "";
                 } else {
@@ -213,7 +261,7 @@
 
             //========================== LOCATION_START
             // elseif ladder to determine the location
-            let location_of_star = "loction";
+            let location_of_star = "location";
 
             if(inputphrase.indexOf("Anachronia") > -1 || inputphrase.indexOf("onia") > -1){
                 location_of_star = "Anachronia";
@@ -291,7 +339,7 @@
                 minutes_to_star = parseInt(replaceOCRN(inputphrase.substring(time_text_startIndex,time_text_endIndex).substring(hashours_flag+4,minutes_index)), 10);
                 minutes_to_star += 60;
             } 
-            else if(minutes_index===-1){//when the timer is sub 1 hour, the time is diaplayed as (45 to 50 minutes)
+            else if(minutes_index===-1){//when the timer is sub 1 hour, the time is displayed as (45 to 50 minutes)
                 minutes_to_star = parseInt(replaceOCRN(inputphrase.substring(time_text_startIndex,time_text_endIndex)), 10);
                 //console.log(minutes_to_star);
             } 
@@ -372,7 +420,7 @@
             esCell.classList.add("no-wrap");//Fix for chrome, not needed in firefox.
             esCell.textContent = " ";// Clear ES cell
             // Check World
-            if(isNaN(column1Data)){
+            if(isNaN(column1Data) || column1Data >= 260){
                 colourCell(cell1, "danger");
                 colourCell(esCell, "danger");
                 colourCell(aCell, "danger");
@@ -387,7 +435,7 @@
                 if(location_of_star === "ERROR-UNDEF-LOC"){
                     esCell.textContent += "L";
                 }
-                if(size_of_star != "Small" && size_of_star != "Average" && size_of_star != "Big"){
+                if(size_of_star !== "Small" && size_of_star !== "Average" && size_of_star !== "Big"){
                     colourCell(cell2, "danger");
                     colourCell(esCell, "danger");
                     colourCell(aCell, "danger");
@@ -424,6 +472,15 @@
             else{
                 esCell.textContent += `[T${esStarfall}]`; // Positive time T-MINUS, not yet T+PLUS
             }
+
+            // Handle Over Time, Time > 2 hours not possible, 120mins
+            if(minutes_to_star >= 121){
+                esCell.textContent += " OT"
+                colourCell(cell2, "danger");
+                colourCell(esCell, "danger");
+                colourCell(aCell, "danger");
+            }
+
             //========================== EXPORT_STATUS_END
 
             // Copy to clipboard
@@ -440,7 +497,7 @@
         // Replace OCR mistaken Letters for Numbers
         function replaceOCRN(input) { 
             let processedOCRN = input.replace(/\s+/g, '') // Remove spaces
-                                     .replace(/I/gi, '1')   // Replace Ii with 1
+                                     .replace(/I/g, '1')   // Replace I with 1
                                      .replace(/O/gi, '0')   // Replace Oo with 0
                                      .replace(/S/gi, '5')   // Replace Ss with 5
                                      .replace(/Z/gi, '2')   // Replace Zz with 2
@@ -497,7 +554,7 @@
             handleInput(input);
         });
         
-        // Event listener for the prompt button EXPRIMENTAL fullparse
+        // Event listener for the prompt button EXPERIMENTAL fullparse
         document.getElementById("addRowFullParse").addEventListener("click", function () {
             // Prompt the user to enter CSV data
             let input = prompt("Enter transcript with FL world number:");
@@ -523,6 +580,9 @@
                 document.getElementById("expInput").value = "";
             }, 0); // Delay of 0 milliseconds to ensure it runs after 
         }
+        function setOnPastePlaceholder(){
+            document.getElementById("expInput").placeholder = "PASTE AREA, Paste here!                                                    ​                                                   ​                                                   You see a shooting star! ... ... looks to be size 10. Friends List RuneScape 39";
+        }
         //========================== BUTTONS_&_TEXTBOXES_END
         
         //========================== ACTIVITY_INDICATOR_START
@@ -540,6 +600,7 @@
         }
     
         function activityUpdate(){
+            document.getElementById('status_lastworld').innerHTML = "Last World Scoped: " + lastWorldScoped;
             if(activityIndChange !== lastWorldScoped){
                 activityColourFlipper();
                 activityIndChange = lastWorldScoped;
@@ -560,8 +621,6 @@
             m = checkTime(m);
             //s = checkTime(s);
             document.getElementById('utc_clock').innerHTML = "<a title=\"The current in-game time\">UTC:</a> " + h + ":" + m;
-            document.getElementById('utc_clock').innerHTML += "<br />Last World Scoped: " + lastWorldScoped;
-            activityUpdate(); // Trigger a lookup of activity
             setTimeout(startUTCClock, 1000);//60000=1min
         }
 
@@ -573,20 +632,47 @@
         
         //========================== THEME_BUTTONS_START
         document.getElementById("toggleTheme").addEventListener("click", function () {
-            // Prompt the user to enter CSV data
             document.getElementsByTagName("body")[0].classList.toggle("darktheme");
             document.getElementsByTagName("input")[0].classList.toggle("darktheme");
-            document.getElementsByTagName("input")[1].classList.toggle("darkthemeTextBox");
+            document.getElementsByTagName("input")[4].classList.toggle("darkthemeTextBox");//1
             document.getElementsByTagName("textarea")[0].classList.toggle("darkthemeTextBox");
-            //$("p").toggleClass("darktheme");
-            //$("p").toggleClass("darktheme");
+            document.getElementById("input_header").classList.toggle("ih_default");
+            document.getElementById("input_header").classList.toggle("darktheme");
         });
         document.getElementById("toggleMonospace").addEventListener("click", function () {
             // Toggle monospace font
             document.getElementsByTagName("body")[0].classList.toggle("monospace");
         });
         //========================== THEME_BUTTONS_END
+
+        //========================== SETTINGS_BOX_START
+        document.getElementById("chbx1").addEventListener("click", funcChb1);
+        document.getElementById("chbx2").addEventListener("click", funcChb2);
+        document.getElementById("chbx3").addEventListener("click", funcChb3);
+        function funcChb1() {
+            //input_header
+            if(document.getElementById("chbx1").checked){
+                document.getElementById("input_header").classList.add("input_header");
+            }
+            else{
+                document.getElementById("input_header").classList.remove("input_header");
+            }
+        }
+        function funcChb2() {
+            return document.getElementById("chbx2").checked;
+        }
+        function funcChb3() {
+            return document.getElementById("chbx3").checked;
+        }
+        //========================== SETTINGS_BOX_END
+
+        //========================== LOAD_AT_PAGELOAD
+        window.addEventListener("load", setOnPastePlaceholder);//For Safari.
         window.addEventListener("load", startUTCClock);// Load UTC clock when page is fully loaded
+        window.addEventListener("load", activityUpdate);//trigger once for UI
+        window.addEventListener("load", funcChb1);// Initial input header
+        window.addEventListener("load", funcChb2);// Generate on paste
+        window.addEventListener("load", funcChb3);// Invert table entry
     </script>
 </body>
 </html>
