@@ -4,7 +4,18 @@
 <!-- The MIT License applies to the entire page -->
 <html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.20.1/cdn/components/relative-time/relative-time.js"></script>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.20.1/cdn/components/alert/alert.js"></script>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.20.1/cdn/components/progress-bar/progress-bar.js"></script>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.20.1/cdn/themes/light.css"/>
+
     <style>
+        /*SL Fix - Flash of Undefined Custom Elements*/
+        :not(:defined) {
+            visibility: hidden;
+        }
         body {
             /*Main Default Font*/
             font-family: Arial,Helvetica Neue,Helvetica,sans-serif;
@@ -13,18 +24,75 @@
             /*Monospace Font, for toggle*/
             font-family: Consolas, SF Mono, monospace;
         }
-        .statusBox {
-            /*Main Status box*/
-            float: right;
-            width: 300px;
+        .tableDownward{
+            /*Table Downward*/
         }
-        .statusBoxA {
+        .sbPinFloat {
             /*Main Status box*/
-            float: right;
-            width: 300px;
-            border: 1px solid;
-            padding: 10px;
-            border-radius: 4px;
+            width: 274px;
+
+            z-index: 10;
+            position: fixed;
+
+            left: auto;      /* Reset left property */
+            right: 8px;
+            top: 10px;
+        }
+        .sbPinFloatUnlocked {
+            /*Main Status box*/
+            width: 274px;
+
+            z-index: 5;
+            position: relative; /*!important*/
+
+            left: auto;      /* Reset left property */
+            right: auto;
+            top: auto;
+        }
+        .sbPinFloatA {
+            /*Main Status box*/
+            /*STATUS*/
+            width: 274px;
+
+            z-index: 10;
+            position: fixed;
+
+            left: auto;      /* Reset left property */
+            right: 10px;
+            top: 1px;
+        }
+        .sbPinFloatB {
+            /*Main Status box*/
+            /*SETTINGS*/
+            width: 274px;
+
+            z-index: 10;
+            position: relative;
+
+            left: auto;      /* Reset left property */
+        }
+        .sbPinFloatC {
+            /*Main Status box*/
+            /*OPTIONS*/
+            width: 274px;
+
+            z-index: 10;
+            position: fixed;
+
+            left: auto;      /* Reset left property */
+            right: 10px;
+            top: 104px;
+        }
+        .sbPinFloatD {
+            /* sl-alert */
+            width: 274px;
+
+            z-index: 20;
+            position: fixed;
+
+            left: auto;
+            right: 10px;
+            top: 10px;
         }
         .inputTextboxBorder {
             /*Used for indication colour boxes, e.g., Activity Indicator*/
@@ -57,622 +125,2824 @@
         .input_header {
             position: sticky;
             top: 0;
-            overflow: hidden;
+            z-index: 5;
         }
         .ih_default {
             background-color: rgba(255, 255, 255, 1); /* Opaque white */
+        }
+        .dataTable{
+            max-width: calc(100% - 300px);
+        }
+        .slprogress{
+            max-width: calc(100% - 300px);
+            --indicator-color:MediumSeaGreen;
+        }
+        @media (max-width: 1056px) {
+            /*smaller than 1056px*/
+            .dataTable{
+                max-width: 100%;
+            }
+            .slprogress{
+                max-width: 100%;
+                --indicator-color:MediumSeaGreen;
+            }
+        }
+        @media (max-width: 1130px) {
+            /*text size for table*/
+            .dataTable{
+                font-size: 14px;
+            }
+        }
+        @media (max-width: 800px) {
+            .dataTable{
+                font-size: 10px;
+            }
+        }
+        @media (max-width: 700px) {
+            .dataTable{
+                font-size: 9px;
+            }
+        }
+        @media (max-width: 600px) {
+            .dataTable{
+                font-size: 8px;
+            }
+        }
+        @media (max-width: 500px) {
+            .dataTable{
+                font-size: 7px;
+            }
+        }
+        @media (min-width: 1056px) {
+            /*Placeholder min-width*/
+        }
+        fieldset {
+            border-radius: 4px;
+        }
+        .boxShadow {
+            box-shadow: 0px 2px;
+        }
+        .divbreak {
+            /*break of 6px*/
+            padding: 3px;
+        }
+        .divbreak2 {
+            /*break of 2px*/
+            padding: 1px;
         }
     </style>
     <title>Stargazer Tool</title>
 </head>
 <body>
-    <div id="input_header" class="input_header ih_default">
+<main>
     <h2 id="heading">Stargazer Tool</h2>
     <script>
-        // Handle titles and headings
-        let development_flag = 1;
-        if(development_flag){
-            document.title += " dev";
-            document.getElementById("heading").innerHTML += "<sup><small> dev</small></sup>";
-        }
-        else{
-            document.title += " v1.23";
-            document.getElementById("heading").innerHTML += "<sup><small> version 1.23</small></sup>";
-        }
-        // Handle Activity Indicator, Set some variables top of page.
+        //========================== GLOBALS_START
+        // Set version, titles, headings
+        const G_versionNumber = "1.50"
+        const G_development_flag = true;
+
+        // Activity Indicator
         let lastWorldScoped = "N/A";
         let activityIndChange = "N/A";
         let activityIndColour = 0;
+
+        let G_waveTimeLimit = 0; // Landing time floor
+        let G_progress_bar = 0; // Progress bar
+
+        let UTCDebug = false; // Use F_UTCDebug(true); Start debug per minute announcement + pips
+        let UTCDebugNextMinute = 0; // Use F_UTCDebug(true); Set using function
+
+        let G_alarm_time = 0; // Main Alarm, set as per G_waveTimeLimit
+        let G_alarm2_time = 0; // Star Alarm (World)
+        let G_alarm3_time = 0; // Star Reminder 5min Alarm (World)
+        //========================== GLOBALS_START
     </script>
     
-    <div class="statusBox">
-        <div class="statusBoxA">
-        <div style="float: right;">
-            <div style="padding-bottom: 4px;"><button id="toggleTheme">☀️/🌑</button></div>
-            <button id="toggleMonospace" >🔤/🔡</button>
-        </div>
-        <div id="utc_clock"></div>
-        <div id="status_lastworld"></div>
-        <div id="activityBlock" style="padding-bottom: 4px;"><a title="Visual indicator, you added a new scoping call. ">Activity:</a> <input type="text" class="inputTextboxBorder" id="statusCell" placeholder="  ☄️" size="4" disabled></div>
+    <div id="statusBoxMainDiv" class="statusBox sbPinFloat ih_default">
+        <div id="statusBoxA" class="statusBoxA">
+            <details open="potato">
+            <summary>Status:</summary>
+            <fieldset>
+                <div id="utc_clock"></div>
+                <div id="status_lastworld"></div>
+                <div id="outerActivityBlock"><div id="starfallAlarm"></div><div id="activityBlock"><a title="Visual indicator, you added a new scoping call. ">Activity:</a> <input type="text" class="inputTextboxBorder" id="statusCell" placeholder="  ☄️" size="4" disabled /></div></div>
+                <div id="waveTlimIndcator" title="Wave time limit, floor (min. of when a star will fall)">Wave t-limit: 🔕 UNSET</div>
+            </fieldset>
+            </details>
         </div>
         <div class="statusBoxNull" style="padding: 0px; font-size:1px;" >&nbsp;</div>
-
-        <div class="statusBoxB">
+        <div id="statusBoxB" class="statusBoxB">
+            <details open="potato">
+            <summary>Settings:</summary>
             <fieldset>
-                <legend>Settings:</legend>
                 <input type="checkbox" id="chbx1" name="chbx1" checked />
                 <label for="chbx1"> Lock input header</label><br />
                 <input type="checkbox" id="chbx2" name="chbx2" />
-                <label for="chbx2"> Generate on paste</label><br />
-                <input type="checkbox" id="chbx3" name="chbx3" checked />
-                <label for="chbx3"> Invert table entry</label><br />
+                <label for="chbx2"> Auto Generate & Copy</label><br />
+                <input type="checkbox" id="chbx3" name="chbx3" checked style="display: none" />
+                <label for="chbx3" style="display: none"> Invert table entry</label>
+                <button id="toggleTheme">☀️/🌑</button><label for="toggleTheme"> Toggle theme</label><br />
+                <button id="toggleMonospace" >🔤/🔡</button><label for="toggleMonospace"> Toggle monospace</label><br />
+                <input type="datetime-local" id="waveTimeLimit" class="defaultTextBoxes" />&nbsp;<button id="waveTimeLimitButton" title="Set wave t-lim">🌀</button><br />
+                <button id="plusWaveButton" title="Add next wave time limit">➕⌛</button> Add next wave t-limit
+                <div class="divbreak2"></div>
+                <details>
+                <summary>Alarms:</summary>
+                <fieldset>
+                    <input type="checkbox" id="chbx4" name="chbx4" checked />
+                    <label for="chbx4"> Enable audio alarms</label><br />
+                    <input id="alarmWorldTextbox" class="inputTextboxBorder" type="text" minlength="1" maxlength="3" size="3" title="Enter world number"/>&nbsp;<button id="alarmWorldButton">⏰</button><label for="alarmWorldTextbox">  Add world alarm</label><br />
+                    <div class="divbreak2"></div>
+                    <button id="alarmWorldCLButton">🆑</button> Clear world alarm(s)<br />
+                    <button id="tlimCLButton">🆑</button> Clear wave t-limit<br />
+                    <button id="resyncSLRButton" title="Force a resync of all Relative Time fields.">🔁</button> Resync rel-time fields
+                </fieldset>
+                </details>
             </fieldset>
+            </details>
+        </div>
+        <div id="statusBoxC" class="statusBoxC">
+            <details open="potato">
+            <summary class="ih_default">Options:</summary>
+            <fieldset>
+                <button id="buttonScrollToTop">🔝</button><button id="buttonScrollToTB">⬆️</button>
+                <label> Scroll to</label><br />
+                <button id="clearTableButton" title="Purge Table"> 🔥  </button><button id="clearTableButton2" style="display: none"> 🛑</button> Purge table<br />
+                <button id="buttonLineBreak">📃 </button>
+                <label for="buttonLineBreak"> Add blank line to table</label><br />
+                <button id="sortDupButton">⏸️</button>
+                <label for="sortDupButton"> Flag duplicate entries</label><br />
+                <div class="divbreak2"></div>
+                <select name="exportOptionsRegion" id="exportOptionsRegionSelect">
+                    <option value="default" selected>-- ⛺ Default --</option>
+                    <option value="Starstruck">☄️ Starstruck, (Feldip + C/K)</option>
+                    <option value="defaultf2p">🆓 F2P Default report</option>
+                    <option value="NULL" disabled>---</option>
+                    <option value="Anachronia">🦖 Anachronia</option>
+                    <option value="Asgarnia">✴️ Asgarnia</option>
+                    <option value="Ashdale">🐦 Ashdale</option>
+                    <option value="Crandor/Karamja">🌴 Crandor/Karamja</option>
+                    <option value="Daemonheim">ᚼᛒ Daemonheim</option>
+                    <option value="Feldip Hills">🟂 Feldip Hills</option>
+                    <option value="Fremennik/Lunar Isle">🌙 Fremennik/Lunar Isle</option>
+                    <option value="Kandarin">︽ Kandarin</option>
+                    <option value="Kharidian Desert">🏜️ Kharidian Desert</option>
+                    <option value="Lost Grove">🌲🏞️ Lost Grove</option>
+                    <option value="Menaphos">🌵🌆 Menaphos</option>
+                    <option value="Misthalin">♾️ Misthalin</option>
+                    <option value="Morytania/Mos Le'Harmless">🦇🏴‍☠️ Morytania/Mos Le'Harmless</option>
+                    <option value="Piscatoris/Gnome/Tirannwn">🦌 Piscatoris/Gnome/Tirannwn</option>
+                    <option value="Tuska">🐗 Tuska</option>
+                    <option value="Wilderness">🏕️☠️ Wilderness</option>
+                    <option value="NULL2" disabled>---</option>
+                    <option value="🇩📊">📊⏸️ Flag duplicates 🟧</option>
+                    <option value="🇼📊">📊↕️ Sort by, World</option>
+                    <option value="🇹📊">📊↕️ Sort by, Landing time</option>
+                    <option value="🇸📊">📊↕️ Sort by, Size</option>
+                    <option value="7️⃣">7️⃣ Export table size >7 + Feldip</option>
+                    <option value="⛔">⛔ Errors</option>
+                </select><br />
+                <div style="padding-bottom: 4px;"></div>
+                <select name="exportOptionsSize" id="exportOptionsSizeSelect">
+                    <option value="default" selected>---</option>
+                    <option value="s1 ">1️⃣ Size 1</option>
+                    <option value="s2 ">2️⃣ Size 2</option>
+                    <option value="s3 ">3️⃣ Size 3</option>
+                    <option value="s4 ">4️⃣ Size 4</option>
+                    <option value="s5 ">5️⃣ Size 5</option>
+                    <option value="s6 ">6️⃣ Size 6</option>
+                    <option value="s7 ">7️⃣ Size 7</option>
+                    <option value="s8 ">8️⃣ Size 8</option>
+                    <option value="s9 ">9️⃣ Size 9</option>
+                    <option value="s10 ">🔟🌠 Size 10</option>
+                </select>
+                <button id="buttonTableQuery" >📟 Query table</button>
+            </fieldset>
+            </details>
+        </div>
+        <div id="id_alerts" class="alert-toast sbPinFloatD">
+            <sl-alert id="queryAlertSuccess" variant="primary" duration="3000" countdown="rtl" closable>
+                Query Report, generated and added to clipboard. 📋✅
+            </sl-alert>
+            <sl-alert id="waveTimeAlertSuccess" variant="success" duration="3000" countdown="rtl" closable>
+                Wave Time Limit SET. 🔒⏰
+            </sl-alert>
+            <sl-alert id="timeAddAlertSuccess" variant="success" duration="3000" countdown="rtl" closable>
+                Added 2h 8m to <br />Wave t-Limit. ➕⌛
+            </sl-alert>
+            <sl-alert id="SGTEButtonSuccess" variant="success" duration="3000" countdown="rtl" closable>
+                Table successfully exported! 🚚📋
+            </sl-alert>
+            <sl-alert id="SGTELineButtonSuccess" variant="success" duration="3000" countdown="rtl" closable>
+                Line exported! 📋📑
+            </sl-alert>
+            <sl-alert id="querySortAlertSuccess" variant="success" duration="1000" countdown="rtl" closable>
+                Sort complete! 📊↕️
+            </sl-alert>
+            <sl-alert id="generalAlertSuccess" variant="success" duration="2000" countdown="rtl" closable>
+                ✅ Placeholder Success!, Check console.
+            </sl-alert>
+            <sl-alert id="generalAlertWarning" variant="warning" duration="2000" countdown="rtl" closable>
+                ⚠️ Placeholder Warning!, Check console.
+            </sl-alert>
+            <sl-alert id="generalAlertError" variant="danger" duration="2000" countdown="rtl" closable>
+                🛑 Placeholder Error!, Check console.
+            </sl-alert>
         </div>
     </div>
 
-        <!-- Textbox for user input -->
-        <!-- This may be phased out in the future -->
-    <div id="inputContainer">
-        <label for="csvInput">Enter text in DSV format using a semicolon ; as follows: <sup>World<sub>;</sub>Transcript</sup></label>
+    <div id="input_header" class="input_header ih_default boxShadow">
+        <div class="divbreak"></div>
+        <div id="inputContainer2">
+            <div style="padding: 4px;">
+                <label title="'Full Transcript' Telescope message along with top World number interface.">Add Row:</label>
+                <button id="addRowFullParse">Add Row, (Universal Prompt)</button><br />
+            </div>
+            &nbsp;<textarea id="expInput" class="defaultTextBoxes" onpaste="onPasteExp();" onclick="this.select();" placeholder="PASTE AREA, Paste here!&#13;&#10;&#13;&#10;You see a shooting star! ... ... looks to be size 10. Friends List RuneScape 39" rows="15" cols="50"></textarea>&nbsp;&nbsp;&nbsp;
+        </div>
         <br />
-        <label for="csvInput">(e.g., 39<sub>;</sub>You see a shooting star! ..... to be of average size.):</label>
-        <!-- Was CSV but one of the transcripts(Piscatoris) has a comma so hence DSV with semicolon -->
-        <input type="text" id="csvInput" class="defaultTextBoxes" placeholder="Enter DSV values here">
-        <button id="addRowBtn">Add Row</button>
-        <button id="addRowBtnPrpt">Add Row (Prompt)</button>
-    </div>
-    <br />
-    <div id="inputContainer2">
-        <label title="'Full Transcript' Telescope message along with top World number interface.">Add Row, Full Transcript (FT):</label>
-        <button id="addRowFullParse">Add Row, FT (Prompt)</button><br />
-        <textarea id="expInput" class="defaultTextBoxes" onpaste="onPasteExp();" onclick="this.select();" placeholder="PASTE AREA, Paste here!&#13;&#10;&#13;&#10;You see a shooting star! ... ... looks to be size 10. Friends List RuneScape 39" rows="7" cols="50"></textarea>
-    </div>
-    <br />
+        <div class="divbreak"></div>
+        <sl-progress-bar id="potatobar" class="slprogress" value="0" style="--height: 6px;"></sl-progress-bar>
+        <div class="divbreak"></div>
     </div>
 
-    <table id="datatable" border="1">
-        <thead>
-            <tr>
-                <th>&nbsp;World&nbsp;</th>
-                <th>&nbsp;Telescope Text Extraction&nbsp;</th>
-                <th>&nbsp;Timestamp&nbsp;</th>
-                <th>&nbsp;<a title="Export Status">ES</a>&nbsp;</th>
-                <th>&nbsp;Actions&nbsp;</th>
-            </tr>
-        </thead>
-        <tbody>
-            <!-- Table rows will be added here -->
-        </tbody>
-    </table>
-    <br />
-    ES Colour Key:&nbsp;&nbsp;[
-    <a title=" ">Field OK:</a> <input type="text" class="inputTextboxBorder" style="background-color: LightSkyBlue;" placeholder="    " size="4" disabled> |
-    <a title=" ">Generate OK:</a> <input type="text" class="inputTextboxBorder" style="background-color: PaleGreen;" placeholder="    " size="4" disabled> |
-    <a title="Check Error Field; World, Location and or Star-Size; Export generated with Errors.">ERROR:</a> <input type="text" class="inputTextboxBorder" style="background-color: LightCoral;" placeholder="    " size="4" disabled> |
-    <a title="Indication row exported with relative time ≤ 1">Time ≤ 1:</a> <input type="text" class="inputTextboxBorder" style="background-color: #FED8B1;" placeholder="    " size="4" disabled> ]<br />
-    ES Error Key:&nbsp;&nbsp;[W:World]&emsp;[L:Location]&emsp;[S:Size]&emsp;[T+NaN:Time]&emsp;[OT:Time > 2hr?] <br />
-    <br />
-    == README ==
-    <small>
-    <br />
-    This tool is intended to be used with the aid of 'Text Grab', with 'Capture Last Region Selection' option.<br />
-    Text Grab is what Microsoft PowerToys, Text Extractor is based on.<br />
-    <br />
-    However, this tool can essentially be used with any OCR text extraction software. e.g., macOS TRex OCR / Text Sniper.<br />
-    <br />
-    Usage:<br />
-    Prepare your game window to have the top of your friends list, to be adjacent or below the telescope message.<br />
-    Run the OCR on the section of the screen like in this image. <br />
-    &emsp;&emsp;<img src="img_example_008D186F.png" alt="alt text: Image of the Top of Friends list positioned (Bottom Left) next to the Game Dialog (Telescope message)."><br />
-    Paste the OCR Text extraction into the PASTE AREA!<br />
-    Do not delay entering the data, as the message input time is used to, calculate when the star will land.<br />
-    When you are ready to export, click on the "Generate & Copy" button, this will generate the "/call" command and add it to your clipboard.<br />
-    (There is no hurry to export, as the tool will automatically adjust the time accordingly, with a floor of 1 minute.)<br />
-    <br />
-    When using Text Grab <a href="https://github.com/TheJoeFin/Text-Grab">https://github.com/TheJoeFin/Text-Grab</a>, it is recommended to:
-    <pre>
-    - Default Launch Window: Full Screen
-    - Fullscreen Grab (⊞ Win+Shift+F) or Copy Last Region Selection (⊞ Win+Ctrl+Shift+F)
-    - Turn OFF, "Correct common confusions between numbers and letters" & 
-    In order:
-        1. With history ON, capture the area where the world number and telescope message is, to SET the "Last Region Selection"
-        2. Turn OFF, "Keep recent history of Grabs and Edit Text Windows", (This will lock the Last Region and also save disk space.)
-    </pre>
-    Other:<br />
-    <a href="https://learn.microsoft.com/en-us/windows/powertoys/text-extractor">https://learn.microsoft.com/en-us/windows/powertoys/text-extractor</a> With the activation shortcut (default: ⊞ Win+Shift+T)<br />
-    <br />
-    Microsoft PowerToys: <a href="https://learn.microsoft.com/en-us/windows/powertoys/">https://learn.microsoft.com/en-us/windows/powertoys/</a><br />
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="https://github.com/microsoft/PowerToys">https://github.com/microsoft/PowerToys</a><br />
-    <br />
-    </small>
+    <div id="tableDownward" class="tableDownward">
+        <div id="divTableTop"></div>
+        <div class="divbreak"></div>
+        <table id="datatable" border="1" class="dataTable">
+            <thead>
+                <tr>
+                    <th>&nbsp;<a title="Click to purge row">rm</a>&nbsp;</th>
+                    <th>&nbsp;World <button id="sortWorldButton" title="Sort">⤴️</button>&nbsp;</th>
+                    <th>&nbsp;Region&nbsp;</th><!-- new location -->
+                    <th>&nbsp;Size <button id="sortSizeButton" title="Sort">⤴️</button>&nbsp;</th><!-- new size s1 -->
+                    <th>&nbsp;Landing <button id="sortTimeButton" title="Sort">⤴️</button>&nbsp;</th><!-- Timestamp changed to landing, with details -->
+                    <th class="no-wrap">&nbsp;<a title="Process Status/Text EXtraction">PS/TEX</a>&nbsp;</th><!-- new Process Status, could put TEX in details here --><!-- Telescope Text Extraction -->
+                    <th>&nbsp;<a title="Export Status">ES</a>&nbsp;</th>
+                    <th>&nbsp;Actions&emsp;<button id="exportTableButton" title="Export full table">🚚</button><button id="exportTable7plusButton" title="Export table s7+">7️⃣</button>&nbsp;</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Table rows will be added here -->
+            </tbody>
+        </table>
+        <div id="divTableBottom"></div>
+        <br />
+        ES Colour Key:&nbsp;&nbsp;[
+        <a title=" ">Field OK:</a> <input type="text" class="inputTextboxBorder" style="background-color: LightSkyBlue;" placeholder="    " size="4" disabled /> |
+        <a title=" ">Generate OK:</a> <input type="text" class="inputTextboxBorder" style="background-color: PaleGreen;" placeholder="    " size="4" disabled /> |
+        <a title="Check Error Field; World, Region and or Star-Size; Export generated with Errors.">ERROR:</a> <input type="text" class="inputTextboxBorder" style="background-color: LightCoral;" placeholder="    " size="4" disabled /> |
+        <a title="Indication row exported with relative time ≤ 1">Time ≤ 1:</a> <input type="text" class="inputTextboxBorder" style="background-color: #FED8B1;" placeholder="    " size="4" disabled /> ]<br />
+        PS/ES Error Key:&nbsp;&nbsp;[W:World]&emsp;[R:Region]&emsp;[S:Size]&emsp;[T+NaN:Time] <br />
+        <br />
+        == README ==
+        <small>
+        <br />
+        This tool is intended to be used with the aid of 'Text Grab', with 'Capture Last Region Selection' option.<br />
+        Text Grab is what Microsoft PowerToys, Text Extractor is based on.<br />
+        <br />
+        However, this tool can essentially be used with any OCR text extraction software. e.g., macOS TRex OCR / Text Sniper.<br />
+        <br />
+        Usage:<br />
+        Prepare your game window to have the top of your friends list, to be adjacent or below the telescope message.<br />
+        Run the OCR on the section of the screen like in this image. <br />
+        &emsp;&emsp;<img src="img_example_008D186F.png" alt="alt text: Image of the Top of Friends list positioned (Bottom Left) next to the Game Dialog (Telescope message)."><br />
+        Paste the OCR Text extraction into the PASTE AREA!<br />
+        Do not delay entering the data, as the message input time is used to, calculate when the star will land.<br />
+        When you are ready to export, click on the "Generate & Copy" button, this will generate the "/call" command and add it to your clipboard.<br />
+        (There is no hurry to export, as the tool will automatically adjust the time accordingly, with a floor of 1 minute.)<br />
+        <br />
+        When using Text Grab <a href="https://github.com/TheJoeFin/Text-Grab">https://github.com/TheJoeFin/Text-Grab</a>, it is recommended to:
+        <pre>
+        - Default Launch Window: Full Screen
+        - Fullscreen Grab (⊞ Win+Shift+F) or Copy Last Region Selection (⊞ Win+Ctrl+Shift+F)
+        - Turn OFF, "Correct common confusions between numbers and letters" &
+        In order:
+            1. With history ON, capture the area where the world number and telescope message is, to SET the "Last Region Selection"
+            2. Turn OFF, "Keep recent history of Grabs and Edit Text Windows", (This will lock the Last Region and also save disk space.)
+        </pre>
+        Other:<br />
+        <a href="https://learn.microsoft.com/en-us/windows/powertoys/text-extractor">https://learn.microsoft.com/en-us/windows/powertoys/text-extractor</a> With the activation shortcut (default: ⊞ Win+Shift+T)<br />
+        <br />
+        Microsoft PowerToys: <a href="https://learn.microsoft.com/en-us/windows/powertoys/">https://learn.microsoft.com/en-us/windows/powertoys/</a><br />
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="https://github.com/microsoft/PowerToys">https://github.com/microsoft/PowerToys</a><br />
+        <br />
+        </small>
+    </div>
+</main>
+<script>
+    //========================== INIT_START
+    // Set version, titles, headings
+    if(G_development_flag === true){
+        document.title += " dev";
+        document.getElementById("heading").innerHTML += "<sup><small> dev</small></sup>";
+    }
+    else{
+        document.title += ` v${G_versionNumber}`;
+        document.getElementById("heading").innerHTML += `<sup><small> version ${G_versionNumber}</small></sup>`;
+    }
+    // Function to start UTCDebug, F_UTCDebug(true);
+    // Unreferenced / no usages
+    function F_UTCDebug(bool){
+        if(bool === true){
+            UTCDebug = true;
+            UTCDebugNextMinute = (Math.floor((Date.now()/1000)/60)*60)+60;
+        }else{ // false
+            UTCDebug = false;
+            UTCDebugNextMinute = 0;
+        }
+        return `UTCDebug ${UTCDebug}`;
+    }
+    //========================== INIT_END
 
+    //========================== MAIN_FUNCTIONS_START
+    // Regular Input, full transcript with world number, dsv input
+    function handleInput(input) {
+        // Get the input value from the textbox or prompt
 
+        if (input) {
+            // Split the input into an array based on commas
+            const columns = input.split(";");
 
-    <script>
-        //========================== MAIN_FUNCTION_START
-        function handleInput(input) {
-            // Get the input value from the textbox or prompt
+            // Check if the input has exactly 2 values
+            if (columns.length === 2) {
+                // Get the table body
+                const table = document.getElementById("datatable").getElementsByTagName("tbody")[0];
 
-            if (input) {
-                // Split the input into an array based on commas
-                let columns = input.split(";");
+                // Create a new row
+                let newRow;
+                if(funcChb3()){
+                    newRow = table.insertRow(0);
+                }
+                else{
+                    newRow = table.insertRow();
+                }
 
-                // Check if the input has exactly 2 values
-                if (columns.length === 2) {
-                    // Get the table body
-                    let table = document.getElementById("datatable").getElementsByTagName("tbody")[0];
+                // Cell0 Remove row button
+                const cell0 = newRow.insertCell(0);
+                const buttonRMRow = document.createElement("button");
+                buttonRMRow.textContent = "⏏️";
 
-                    // Create a new row
-                    let newRow;
-                    if(funcChb3()){
-                        newRow = table.insertRow(0);
+                // Add an event listener to the button to delete the row when clicked
+                buttonRMRow.addEventListener("click", function() {
+                    const rowToDelete = this.closest("tr"); // Get the row that contains the button
+                    rowToDelete.remove();
+                });
+                cell0.appendChild(buttonRMRow);
+
+                const PTxA = processInput(columns[0].trim(),columns[1].trim()); // Processed TeXt Array
+
+                // Add cells with the input data
+                // Cell1 World
+                const cell1 = newRow.insertCell(1);
+                cell1.textContent = " w"+columns[0].trim()+" ";
+                lastWorldScoped = columns[0].trim();
+                if (cell1.textContent === " wNaN "){
+                    cell1.textContent = " ⚠️#WLD! ";
+                }
+
+                // Cell2 Region Location
+                const cell2 = newRow.insertCell(2);
+                cell2.classList.add("no-wrap");
+                cell2.textContent = " "+PTxA[0][0]+" ";
+
+                // Cell3 Size of Star
+                const cell3 = newRow.insertCell(3);
+                if (PTxA[1] === "⚠️#SIZE!") {
+                    cell3.textContent = " "+PTxA[1]+" ";
+                }
+                else if(String(PTxA[1]).search(/Small|Average|Big|Very Small|Fairly Small|Fairly Big|Very Big/)>-1){
+                    cell3.textContent = " s "+PTxA[1]+" ";
+                }
+                else{
+                    cell3.textContent = " s"+PTxA[1]+" ";
+                    if (cell3.textContent === " sNaN "){
+                        cell3.textContent = " ⚠️#SIZE! ";
                     }
-                    else{
-                        newRow = table.insertRow();
+                }
+
+                // Cell4 Landing Timestamp, (UTC)+relative-time, details single report
+                const cell4 = newRow.insertCell(4);
+
+                const UTC0 = new Date(PTxA[2][0]).toUTCString().substring(17, 22); // substring isolates HH:mm
+
+                let aWorldData = additionalWorldData(lastWorldScoped); // Get additional world data
+                aWorldData = aWorldData === undefined ? "":` ${aWorldData}`;
+
+                cell4.appendChild(createDetailsElement("⚠️#TIME! ", "Size:\`"+PTxA[1]+"\` World:\`"+columns[0].trim()+"\` in **"+PTxA[0][0]+"**, <t:"+PTxA[2][1] +":R> (`"+UTC0+"`)"+aWorldData));
+                // console.log(PTxA[2]);
+                if (isNaN(PTxA[2][0])){
+                    // void
+                }
+                else{
+                    const ZULUTime = new Date(PTxA[2][0]).toISOString();
+                    cell4.firstElementChild.firstElementChild.innerHTML = "<small>("+ZULUTime.substring(11,16)+")<sl-relative-time date="+ZULUTime+" format=\"short\" sync></sl-relative-time> </small>";
+                }
+
+                // Cell5 PS
+                const cell5 = newRow.insertCell(5);
+                let errorAccumulator = "";
+                if (PTxA[3] === "☑️"){
+                    errorAccumulator = "☑️";
+                }
+                else{
+                    errorAccumulator = "⛔"+PTxA[3];
+                }
+                cell5.appendChild(createDetailsElement(errorAccumulator, columns[1].trim()));
+
+                if(errorAccumulator.includes("⛔")){
+                    cell5.children[0].children[0].classList.add("no-wrap");
+                }
+
+                // Cell6 ES
+                const esCell = newRow.insertCell(6);
+
+                // Cell7 Hidden Data string for 'Generate & Copy'
+                const hidCell = newRow.insertCell(7);
+                hidCell.style.display = 'none';
+                hidCell.textContent = PTxA[4];
+                const psInfoArray = hidCell;
+
+                // Cell8 Hidden Data time string for 'Generate & Copy'
+                const RTACell = newRow.insertCell(8);
+                RTACell.style.display = 'none';
+                RTACell.textContent = PTxA[2][0];
+
+                // Add a cell with the button
+                // Cell9 Actions, Single line 'Stargazer Export' & 'Generate & Copy'
+                const actionCell = newRow.insertCell(9);
+                actionCell.classList.add("no-wrap");
+
+
+                // 'Stargazer Export'
+                const buttonSGTexport = document.createElement("button");
+                buttonSGTexport.textContent = "📑";
+                buttonSGTexport.addEventListener("click", function() {
+                    // Put psInfoArray into the copy buffer clipboard
+                    if(psInfoArray.textContent.indexOf("«》")===-1){
+                        psInfoArray.textContent += "》";
                     }
+                    // Copy to clipboard
+                    copyToClipboard(psInfoArray.textContent);
+                    document.getElementById("SGTELineButtonSuccess").show();
+                });
+                actionCell.appendChild(buttonSGTexport); // Append button to cell
 
-                    // Add cells with the input data
-                    let cell1 = newRow.insertCell(0);
-                    cell1.textContent = columns[0].trim();
-                    lastWorldScoped = columns[0].trim();
+                // 'Generate & Copy'
+                const buttonGC = document.createElement("button");
+                buttonGC.textContent = "Generate & Copy";
+                buttonGC.addEventListener("click", function() {
+                    generateDiscord(cell1,cell2,cell3,cell4,esCell,actionCell,psInfoArray,RTACell);
+                });
+                actionCell.appendChild(buttonGC);
 
-                    let cell2 = newRow.insertCell(1);
-                    cell2.textContent = columns[1].trim();
+                activityUpdate(); // Trigger a lookup of activity
 
-                    // Add a cell for the timestamp
-                    let timestampCell = newRow.insertCell(2);
-                    // Gets the current UNIX time, calculates and strips to the minute.
-                    let currentTimestamp = Math.floor((Date.now()/1000)/60)*60*1000;
-                    timestampCell.textContent = currentTimestamp;
+                // Option to generate to clipboard on input
+                if(funcChb2()){
+                    generateDiscord(cell1,cell2,cell3,cell4,esCell,actionCell,psInfoArray,RTACell);
+                }
 
-                    // Add a cell with the button
-                    let esCell = newRow.insertCell(3);
-                    let actionCell = newRow.insertCell(4);
-                    let buttonGC = document.createElement("button");
-                    buttonGC.textContent = "Generate & Copy";
+            } else {
+                // alert("Please enter exactly 2 values separated by a Semicolon.");
+                document.getElementById("generalAlertError").innerText = "⁉️ Invalid Input, \nFormat not recognised.";
+                document.getElementById("generalAlertError").show();
+            }
+        }
+    }
+    // Handle import of Export format, /call, Discord Table
+    function SGTExportHandle(input) {
+        if (input) {
+            // Prepare for SGTE_import, 'Stargazer Export' format
+            if (input.indexOf("》") > -1) {
+                // Break at "》" for multiple entries
+                const SGTExA = input.split("》");
+                SGTExA.pop(); // Remove the blank array line, last line
 
-                    // Add click event to the button
-                    buttonGC.addEventListener("click", function() {
-                        generateDiscord(cell1,cell2,timestampCell,esCell,actionCell);
+                // for loop to process multiple lines
+                // Loop through "》" split lines this may be 1 or many
+                for (let i = 0; i < SGTExA.length; i++) {
+                    const SGTExA_line_split = SGTExA[i].split("«");
+
+                    SGTExA_line_split[2] = regionParser(SGTExA_line_split[2])[0]; // Convert region code to region location array
+                    SGTExA_line_split[4] = SGTE_TimeParser(SGTExA_line_split[4],"from36"); // Convert encoded 36 to time array
+
+                    SGTE_import(SGTExA[i], SGTExA_line_split); // Pass variables to SGTE_import.
+                }
+            }
+            // Prepare for SGTE_import, /call format
+            else if(input.indexOf("/call") > -1) {
+                // Split apart the /call format
+                // Reference string, "/call world: 39 region: Misthalin size: 6 relative-time: 93"
+                const dCall = input.split(":");
+
+                let dCall_world = dCall[1].split("region");
+                dCall_world = dCall_world[0].trim();
+                let dCall_region = dCall[2].split("size");
+                dCall_region = dCall_region[0].trim();
+                let dCall_size = dCall[3].split("relative-time");
+                dCall_size = dCall_size[0].trim();
+                const dCall_reltime = dCall[4].trim();
+
+                const currentRunTimestamp = Math.floor((Date.now()/1000)/60)*60*1000;
+
+                // Calculate "relative-time"
+                // Convert the minutes to milliseconds
+                const the_skyfall = Number(dCall_reltime) *60*1000;
+                // Add the time of the message + milliseconds to when star will fall
+                let when_it_crumbles = currentRunTimestamp + the_skyfall;
+                // Export this for P1
+                // Apply Wave Time Limit
+                if (when_it_crumbles < G_waveTimeLimit){
+                    when_it_crumbles = G_waveTimeLimit;
+                }
+
+                const regionArray = regionParser(dCall_region); // Validate region return region location array
+                const timeArray = SGTE_TimeParser(when_it_crumbles,"to36"); // Convert base 10 to time array
+
+                // Quick error check
+                let errorAccumulator = "";
+                if(isNaN(Number(dCall_world))){
+                    errorAccumulator += "W";
+                    dCall_world = "NaN";
+                }
+                if(isNaN(Number(dCall_size))){
+                    errorAccumulator += "S";
+                    if(dCall_size.indexOf("Approximate") > -1){
+                        // dCall_size = "Approximate";
+                    }else{
+                        dCall_size = "NaN";
+                    }
+                }
+                if(errorAccumulator === ""){
+                    errorAccumulator = "☑️";
+                }
+
+
+                let error_accumulator_2 = "";
+                if(errorAccumulator === "☑️"){
+                    error_accumulator_2 = "";
+                }else{
+                    error_accumulator_2 = errorAccumulator;
+                }
+
+                // Build array to match SGTE format
+                const dCall2 = [dCall[0], dCall_world, regionArray[0], dCall_size, timeArray, errorAccumulator, "》"];
+                // Build string to match SGTE format
+                const imitateSGTE_import = "《«" + dCall_world + "«" + regionArray[1] + "«" + dCall_size + "«" + timeArray[2] + "«"+error_accumulator_2+"«》";
+                SGTE_import(imitateSGTE_import, dCall2); // Pass variables to SGTE_import()
+            }
+            // Prepare for SGTE_import, Discord table format
+            else if(input.indexOf("World    Region           Size Time") === 0){
+                // Split apart the Discord table format
+                // Reference string,
+                // World    Region           Size Time|  length 35
+                // -------- ---------------- ---- -----| length 36
+                // 1        Menaphos         s5   05:44| length 36
+                // 2        Misthalin        s4   05:38| length 36
+                //
+                // Header is shorter by 1 character
+
+                const dTableString = (" ").concat(String(input)); // Add 1 character
+                let dTableArray = dTableString.match(/.{1,36}/g); // Split into array at every lot of 36 characters
+                // Drop headers
+                dTableArray = dTableArray.reverse();
+                dTableArray.pop();
+                dTableArray.pop();
+
+                if(!funcChb3()){
+                    dTableArray = dTableArray.reverse();
+                    // reverse back if box is unchecked
+                }
+
+                for (let i = 0; i < dTableArray.length; i++) {
+
+                    // Further Split 'lot of 36 chars' into
+                    const dTableWorld = dTableArray[i].substring(0,3).trim();
+                    let dTableRegion =  dTableArray[i].substring(9,26).trim();
+                    let dTableSize =  dTableArray[i].substring(26,31).trim();
+                    let dTableTime =  dTableArray[i].substring(31,36).trim();
+
+                    if(dTableRegion !== ""){ // if not empty line
+                        if(dTableRegion === "Pisc/Gnome/Tir"){ // Special case for PGT
+                            dTableRegion = "🇪";
+                        }
+                        if(dTableRegion === "Removed No Star"){ // 18 Aug 2025 update, https://runescape.wiki/w/18_August
+                            dTableRegion = "🇫";
+                        }
+                        dTableRegion = regionParser(dTableRegion); // Fetch region location array
+
+                        // Process size
+                        if(dTableSize.includes("s")){
+                            dTableSize = dTableSize.substring(1);
+                        }else{
+                            if(dTableSize === "1-3"){dTableSize = "Small";}
+                            if(dTableSize === "4-6"){dTableSize = "Average";}
+                            if(dTableSize === "7-10"){dTableSize = "Big";}
+                            if(dTableSize === "1-2"){dTableSize = "Very Small";}
+                            if(dTableSize === "3-4"){dTableSize = "Fairly Small";}
+                            if(dTableSize === "5-7"){dTableSize = "Fairly Big";}
+                            if(dTableSize === "8-10"){dTableSize = "Very Big";}
+                        }
+
+                        // Process single UTC/Zulu time string, may error on day change, and be 24 hours behind
+                        dTableTime = new Date().toISOString().substring(0,11)+dTableTime+":00.000Z";
+                        dTableTime = new Date(dTableTime).getTime();
+                        dTableTime = SGTE_TimeParser(dTableTime, "to36"); // Becomes an array
+
+                        const dTableHeader = "Table";
+
+                        // Build array to match SGTE format
+                        const dCall2 = [dTableHeader, dTableWorld, dTableRegion[0], dTableSize, dTableTime, "☑️", "》"];
+                        // Build string to match SGTE format
+                        const imitateSGTE_import = "《«" + dTableWorld + "«" + dTableRegion[1] + "«" + dTableSize + "«" + dTableTime[2] + "««》";
+                        SGTE_import(imitateSGTE_import, dCall2); // Pass variables to SGTE_import()
+                    }
+                }
+            }
+
+            // Main 'Stargazer Export' importing function
+            function SGTE_import(SGTE_import, SGTE_import_array){
+                const SGTExA = SGTE_import_array;
+                // Get the table body
+                const table = document.getElementById("datatable").getElementsByTagName("tbody")[0];
+
+                // Create a new row
+                let newRow;
+                if(funcChb3()){
+                    newRow = table.insertRow(0);
+                }
+                else{
+                    newRow = table.insertRow();
+                }
+
+                // Cell0 Remove row button
+                const cell0 = newRow.insertCell(0);
+                const buttonRMRow = document.createElement("button");
+                buttonRMRow.textContent = "⏏️";
+
+                // Add an event listener to the button to delete the row when clicked
+                buttonRMRow.addEventListener("click", function() {
+                    const rowToDelete = this.closest("tr"); // Get the row that contains the button
+                    rowToDelete.remove();
+                });
+                cell0.appendChild(buttonRMRow);
+
+                // Add cells with the input data
+                // Cell1 World
+                const cell1 = newRow.insertCell(1);
+                cell1.textContent = " w"+SGTExA[1]+" ";
+                lastWorldScoped = SGTExA[1];
+                if (cell1.textContent === " wNaN "){
+                    cell1.textContent = " ⚠️#WLD! ";
+                }
+
+                // Cell2 Region Location
+                const cell2 = newRow.insertCell(2);
+                cell2.classList.add("no-wrap");
+                cell2.textContent = " "+SGTExA[2]+" ";
+
+                // Cell3 Size of Star
+                const cell3 = newRow.insertCell(3);
+                if (SGTExA[3] === "⚠️#SIZE!") {
+                    cell3.textContent = " "+SGTExA[3]+" ";
+                }
+                else if(String(SGTExA[3]).search(/Small|Average|Big|Very Small|Fairly Small|Fairly Big|Very Big/)>-1){
+                    cell3.textContent = " s "+SGTExA[3]+" ";
+                }
+                else{
+                    cell3.textContent = " s"+SGTExA[3]+" ";
+                    if (cell3.textContent === " sNaN "){
+                        cell3.textContent = " ⚠️#SIZE! ";
+                    }
+                }
+
+                if(cell3.textContent===" sApproximate "){
+                    cell3.textContent = " ⚠️#A-SIZE! ";
+                }
+
+                // Cell4 Landing Timestamp, (UTC)+relative-time, details single report
+                const cell4 = newRow.insertCell(4);
+
+                const SGTExA4MM = Number(SGTExA[4][0]);
+                const UTC0 = new Date(SGTExA4MM).toUTCString().substring(17, 22); // substring isolates HH:mm
+                // console.log(UTC0);
+
+                let aWorldData = additionalWorldData(lastWorldScoped); // Get additional world data
+                aWorldData = aWorldData === undefined ? "":` ${aWorldData}`;
+
+                cell4.appendChild(createDetailsElement("⚠️#TIME! ", "Size:\`"+SGTExA[3]+"\` World:\`"+SGTExA[1]+"\` in **"+SGTExA[2]+"**, <t:"+SGTExA4MM/1000 +":R> (`"+UTC0+"`)"+aWorldData));
+                // console.log(SGTExA[4]);
+                if (isNaN(SGTExA4MM)){
+                    // void
+                }
+                else{
+                    const ZULUTime = new Date(SGTExA4MM).toISOString();
+                    cell4.firstElementChild.firstElementChild.innerHTML = "<small>("+ZULUTime.substring(11,16)+")<sl-relative-time date="+ZULUTime+" format=\"short\" sync></sl-relative-time> </small>";
+                }
+
+                // Cell5 PS
+                const cell5 = newRow.insertCell(5);
+                let errorAccumulator = "";
+                if (SGTExA[5] === "☑️" || SGTExA[5] === ""){
+                    errorAccumulator = "☑️";
+                }
+                else{
+                    errorAccumulator = "⛔"+SGTExA[5];
+                }
+
+                if(SGTExA[0]==="/call world") {
+                    cell5.appendChild(createDetailsElement(errorAccumulator, input));
+                }
+                else{
+                    cell5.appendChild(createDetailsElement(errorAccumulator, SGTE_import));
+                }
+
+                if(errorAccumulator.includes("⛔")){
+                    cell5.children[0].children[0].classList.add("no-wrap");
+                }
+
+                // Cell6 ES
+                const esCell = newRow.insertCell(6);
+
+                // Cell7 Hidden Data string for 'Generate & Copy'
+                const hidCell = newRow.insertCell(7);
+                hidCell.style.display = 'none';
+                hidCell.textContent = SGTE_import;
+                const psInfoArray = hidCell;
+
+                // Cell8 Hidden Data time string for 'Generate & Copy'
+                const RTACell = newRow.insertCell(8);
+                RTACell.style.display = 'none';
+                RTACell.textContent = SGTExA[4][0];
+
+                // Add a cell with the button
+                // Cell9 Actions, Single line 'Stargazer Export' & 'Generate & Copy'
+                const actionCell = newRow.insertCell(9);
+                actionCell.classList.add("no-wrap");
+
+                // 'Stargazer Export'
+                const buttonSGTexport = document.createElement("button");
+                buttonSGTexport.textContent = "📑";
+                buttonSGTexport.addEventListener("click", function() {
+                    // Put psInfoArray into the copy buffer clipboard
+                    if(psInfoArray.textContent.indexOf("«》")===-1){
+                        psInfoArray.textContent += "》";
+                    }
+                    // Copy to clipboard
+                    copyToClipboard(psInfoArray.textContent);
+                    document.getElementById("SGTELineButtonSuccess").show();
+                });
+                actionCell.appendChild(buttonSGTexport); // Append button to cell
+
+                // 'Generate & Copy'
+                const buttonGC = document.createElement("button");
+                buttonGC.textContent = "Generate & Copy";
+                buttonGC.addEventListener("click", function() {
+                    generateDiscord(cell1,cell2,cell3,cell4,esCell,actionCell,psInfoArray,RTACell);
+                });
+                actionCell.appendChild(buttonGC); // Append button to cell
+
+                activityUpdate(); // Trigger a lookup of activity
+
+                // Option to generate to clipboard on input
+                if(funcChb2()){
+                    generateDiscord(cell1,cell2,cell3,cell4,esCell,actionCell,psInfoArray,RTACell);
+                }
+            }
+        } else {
+            document.getElementById("generalAlertError").innerText = "⁉️ Invalid Input, \nFormat not recognised.";
+            document.getElementById("generalAlertError").show();
+        }
+    }
+    //========================== MAIN_FUNCTIONS_END
+
+    //========================== P1_GEN_FUNCTION_START
+    // processInput is used to process the transcript into a cleaned format
+    // Region location | size | landing_timestamp
+    function processInput(cell1,textTranscript) {
+
+        // local variables
+        const column1Data = cell1; // World
+        const inputphrase = textTranscript;
+
+        //========================== REGION_LOCATION_START
+        // Relocated to regionParser function
+        const location_of_star = regionParser(inputphrase); // Let it be an array
+        //========================== REGION_LOCATION_END
+
+        //========================== TIME_START
+        const time_text_start = "next";
+        const time_text_end = "to ";
+        const time_text_startIndex = inputphrase.indexOf(time_text_start) > -1 ? inputphrase.indexOf(time_text_start) + 4 : -1;
+        const time_text_endIndex = inputphrase.indexOf(time_text_start) > -1 ? inputphrase.indexOf(time_text_end) : -1;
+
+        // Debug see the substring,
+        // substring should only contain the first section of time window ("1 hour 40 minutes" to 2 hours 10 minutes)
+        // inputphrase.substring(time_text_startIndex,time_text_endIndex)
+
+        const hashours_flag = inputphrase.substring(time_text_startIndex,time_text_endIndex).indexOf("hour");
+        const multihours_flag = inputphrase.substring(time_text_startIndex,time_text_endIndex).indexOf("hours");
+        // Get minutes
+        let minutes_to_star = 0;
+        const minutes_index = inputphrase.substring(time_text_startIndex,time_text_endIndex).indexOf("minute");
+        if(multihours_flag>-1){
+            minutes_to_star = parseInt(replaceOCRN(inputphrase.substring(time_text_startIndex,time_text_endIndex).substring(multihours_flag+5,minutes_index)), 10);
+            minutes_to_star += 120;
+        }
+        else if (multihours_flag===-1 && hashours_flag>-1){
+            minutes_to_star = parseInt(replaceOCRN(inputphrase.substring(time_text_startIndex,time_text_endIndex).substring(hashours_flag+4,minutes_index)), 10);
+            minutes_to_star += 60;
+        }
+        else if(minutes_index===-1){ // When the timer is sub 1 hour, the time is displayed as (45 to 50 minutes)
+            minutes_to_star = parseInt(replaceOCRN(inputphrase.substring(time_text_startIndex,time_text_endIndex)), 10);
+            // console.log(minutes_to_star);
+        }
+        else {
+            minutes_to_star = parseInt(replaceOCRN(inputphrase.substring(time_text_startIndex,time_text_endIndex).substring(0,minutes_index)), 10);
+        }
+        //========================== TIME_END
+
+        //========================== STAR_SIZE_START
+        const size_text_start = "be";
+        const size_text_startIndex = inputphrase.indexOf(size_text_start) + 2;
+        let size_of_star = "⚠️#SIZE!";
+        if(inputphrase.substring(size_text_startIndex).indexOf("size") === 1){
+            // Tier 3 telescope
+            size_of_star = parseInt(replaceOCRN(inputphrase.substring(size_text_startIndex+5)), 10);
+        }
+        else {
+            // if ladder to find size text
+            // Tier 1 telescope
+            if(inputphrase.substring(size_text_startIndex).indexOf("small") > -1){
+                size_of_star = "Small";
+            }
+            if(inputphrase.substring(size_text_startIndex).indexOf("average") > -1){
+                size_of_star = "Average";
+            }
+            if(inputphrase.substring(size_text_startIndex).indexOf("big") > -1){
+                size_of_star = "Big";
+            }
+            // Tier 2 telescope
+            // Placed after to override if using a tier 2 telescope values
+            if(inputphrase.substring(size_text_startIndex).indexOf("very small") > -1){
+                size_of_star = "Very Small";
+            }
+            if(inputphrase.substring(size_text_startIndex).indexOf("fairly small") > -1){
+                size_of_star = "Fairly Small";
+            }
+            if(inputphrase.substring(size_text_startIndex).indexOf("fairly big") > -1){
+                size_of_star = "Fairly Big";
+            }
+            if(inputphrase.substring(size_text_startIndex).indexOf("very big") > -1){
+                size_of_star = "Very Big";
+            }
+        }
+        //========================== STAR_SIZE_END
+
+        //========================== RELATIVE_TIME_START
+        const currentRunTimestamp = Math.floor((Date.now()/1000)/60)*60*1000;
+
+        // Calculate "relative-time"
+        // Convert the minutes to milliseconds
+        const the_skyfall = minutes_to_star *60*1000;
+        // Add the time of the message + milliseconds to when star will fall
+        let when_it_crumbles = currentRunTimestamp + the_skyfall;
+        // Export this for P1
+        // Apply Wave Time Limit
+        if (when_it_crumbles < G_waveTimeLimit){
+            when_it_crumbles = G_waveTimeLimit;
+        }
+
+        const timeArray = SGTE_TimeParser(when_it_crumbles,"to36");
+        //========================== RELATIVE_TIME_END
+
+        //========================== P1_STATUS_START
+        let error_accumulator = ""; // Blank
+        let finalStatusCount = 0;
+        // Check World
+        if(isNaN(column1Data) || column1Data >= 260){
+            error_accumulator += "W";
+        }
+        else{
+            finalStatusCount += 1;
+        }
+        // Check Transcript
+        if(isNaN(size_of_star) || location_of_star[0] === "⚠️#REG!" || size_of_star === "⚠️#SIZE!"){
+            if(location_of_star[0] === "⚠️#REG!"){
+                error_accumulator += "R";
+            }
+            if(size_of_star !== "Small" && size_of_star !== "Average" && size_of_star !== "Big" && size_of_star !== "Very Small" && size_of_star !== "Fairly Small" && size_of_star !== "Fairly Big" && size_of_star !== "Very Big"){
+                error_accumulator += "S";
+            }
+            else{
+                finalStatusCount += 1;
+            }
+        }
+        else{
+            finalStatusCount += 1;
+        }
+        // Success Status
+        if(finalStatusCount === 2){ // All is OK
+            error_accumulator += "☑️";
+        }
+
+        // Final Check, remove 'info check' nothing means no errors
+        let error_accumulator_2 = "";
+        if(error_accumulator === "☑️"){
+            error_accumulator_2 = "";
+        }else{
+            error_accumulator_2 = error_accumulator;
+        }
+        //========================== P1_STATUS_END
+
+        const generatedString = `《«${column1Data}«${location_of_star[1]}«${size_of_star}«${timeArray[2]}«${error_accumulator_2}«》`;
+        const generatedStringArray = [location_of_star,size_of_star,timeArray,error_accumulator,generatedString];
+        return generatedStringArray;
+    }
+    //========================== P1_GEN_FUNCTION_END
+
+    //========================== MAIN_GEN_FUNCTION_START
+    function generateDiscord(cell1,cell2,cell3,tsCell,esCell,aCell,psInfoArray,RTACell) {
+        // cell1, World
+        // cell2, Location Region
+        // cell3, Size
+        // tsCell, cell4, Landing time
+        // esCell, cell6, Blank for this function to return status
+        // aCell, cell9, 2 buttons
+        // psInfoArray, cell7 Hidden cell with string to be split to Array with all information for easy parsing
+        // psInfoArray reference format: 《«39«🇨«7«t1c33c««》
+        // RTACell, cell8 Hidden cell, Landing time Unix milliseconds
+
+        // Split the psInfoArray into an array based on separator
+        const infoArray = psInfoArray.textContent.split("«");
+
+        // Plumbing into old variables
+        const column1Data = infoArray[1]; // World
+
+        //========================== LOCATION_START
+        const location_of_star = cell2.textContent.trim();
+        //========================== LOCATION_END
+
+        //========================== TIME_START
+        // Moved to processInput()
+        //========================== TIME_END
+
+        //========================== STAR_SIZE_START
+        let size_of_star = infoArray[3];
+        if(isNaN(Number(infoArray[3]))){
+            size_of_star = "Approximate";
+        }
+        if(infoArray[3] === "⚠️#SIZE!" || infoArray[3] === "NaN"){
+            size_of_star = "⚠️#SIZE!";
+        }
+        //========================== STAR_SIZE_END
+
+        //========================== RELATIVE_TIME_START
+        // Calculate "relative-time"
+        // Get the current time of export to the last whole minute
+        const we_will_stand_tall = Math.floor((Date.now()/1000)/60)*60*1000;
+        // Fetch landing from RTACell
+        const l_RTACell = RTACell.textContent === "" ? NaN : RTACell.textContent;
+        // Minus the time when the star will fall to current time
+        const face_it_all_together = Number(l_RTACell) - we_will_stand_tall;
+        // Convert the time milliseconds back to minutes
+        let at_skyfall = face_it_all_together/60/1000;
+        let esStarfall = at_skyfall;
+        // Catch all, of 1 minute as the minimum
+        if(at_skyfall < 1){
+            at_skyfall = 1;
+        }
+        if(isNaN(at_skyfall)){
+            at_skyfall = 1;
+        }
+        //========================== RELATIVE_TIME_END
+
+        //========================== DATA TO SEND TO DISCORD
+        // Format  /call world: 50 region: Kharidian Desert size: 8 relative-time: 50
+        // Generate the formatted string
+        let generatedString = `/call world: ${infoArray[1]} region: ${location_of_star} size: ${size_of_star} relative-time: ${at_skyfall}`;
+        //========================== DISCORD_END
+
+        //========================== EXPORT_STATUS_START
+        // Process 'ES' Colour Statuses, Bootstrap color names
+        let finalStatusCount = 0;
+        esCell.classList.add("no-wrap"); // add no-wrap to prevent breaking lines
+        esCell.textContent = " "; // Clear ES cell, replaced space with nbsp
+        // Check World
+        if(isNaN(column1Data) || column1Data >= 260){
+            colourCell(cell1, "danger");
+            colourCell(esCell, "danger");
+            colourCell(aCell, "danger");
+            esCell.textContent += "W";
+            generatedString = "";
+        }
+        else{
+            colourCell(cell1, "info");
+            finalStatusCount += 1;
+        }
+        // Check Transcript
+        if(isNaN(size_of_star) || location_of_star === "⚠️#REG!" || size_of_star === "⚠️#SIZE!"){
+            if(location_of_star === "⚠️#REG!"){
+                colourCell(cell2, "danger");
+                esCell.textContent += "R";
+                generatedString = "";
+            }
+            else{
+                colourCell(cell2, "info");
+            }
+            if(size_of_star !== "Approximate"){
+                // console.log(size_of_star);
+                colourCell(cell3, "danger");
+                colourCell(esCell, "danger");
+                colourCell(aCell, "danger");
+                esCell.textContent += "S";
+                generatedString = "";
+            }
+            else{
+                colourCell(cell3, "info");
+                finalStatusCount += 1;
+                if(cell3.textContent===" ⚠️#A-SIZE! "){ // To handle the special case of an import of /call with "Approximate" size
+                    colourCell(cell3, "warning");
+                    finalStatusCount -= 1;
+                    esCell.textContent += "S";
+                    colourCell(esCell, "warning");
+                    colourCell(aCell, "warning");
+                }
+            }
+        }
+        else{
+            colourCell(cell2, "info");
+            colourCell(cell3, "info");
+            finalStatusCount += 1;
+        }
+        // Success Status
+        if(finalStatusCount === 2){ // All is OK
+            colourCell(cell1, "info");
+            colourCell(cell2, "info");
+            colourCell(esCell, "success");
+            colourCell(aCell, "success");
+        }
+        // Update Status Colour, for Time <= 1
+        esStarfall = esStarfall * -1; // FLIP POS NEG
+        esStarfall = (esStarfall<0?"":"+") + esStarfall;
+        if(at_skyfall === 1 && finalStatusCount === 2){ // Add time in minus to status on export
+            esCell.textContent += `[T${esStarfall}] `;
+            colourCell(esCell, "warning");
+            colourCell(cell2, "warning");
+        }
+        else if(at_skyfall === 1){ // Keep ES colour in Error state
+            esCell.textContent += `[T${esStarfall}] `;
+            // colourCell(cell2, "warning");
+        }
+        else{
+            esCell.textContent += `[T${esStarfall}] `; // Positive time T-MINUS, not yet T+PLUS
+        }
+
+        // Handle Over Time, Time > 2 hours not possible, 120mins
+        // if(minutes_to_star >= 125){
+        //    esCell.textContent += " OT";
+        //    colourCell(cell2, "danger");
+        //    colourCell(esCell, "danger");
+        //    colourCell(aCell, "danger");
+        // }
+
+        //========================== EXPORT_STATUS_END
+
+        // Copy to clipboard
+        copyToClipboard(generatedString);
+    }
+    //========================== MAIN_GEN_FUNCTION_END
+
+    //========================== GENERAL_HELPER_FUNCTIONS_START
+    // Replace OCR mistaken Letters for Numbers
+    function replaceOCRN(input) {
+        let processedOCRN = input.replace(/\s+/g, '') // Remove spaces
+            .replace(/I/g, '1')   // Replace I with 1
+            .replace(/O/gi, '0')   // Replace Oo with 0
+            .replace(/S/gi, '5')   // Replace Ss with 5
+            .replace(/Z/gi, '2')   // Replace Zz with 2
+            .replace(/B/g, '8')   // Replace capital B with 8
+            .replace(/g/g, '9')   // Replace lowercase g with 9
+            .replace(/l/g, '1');   // Replace lowercase l with 1
+
+        // console.log(`processedOCRN: ${processedOCRN}`);
+        return processedOCRN;
+    }
+    // Function to colour cells for EXPORT_STATUS
+    // As per Bootstrap colors
+    function colourCell(cellFO, colourState){
+        if(colourState === "danger"){
+            cellFO.style.backgroundColor = "LightCoral";
+            cellFO.style.color = "Black";
+        }
+        else if(colourState === "info"){
+            cellFO.style.backgroundColor = "LightSkyBlue";
+            cellFO.style.color = "Black";
+        }
+        else if(colourState === "success"){
+            cellFO.style.backgroundColor = "PaleGreen";
+            cellFO.style.color = "Black";
+        }
+        else if(colourState === "warning"){
+            cellFO.style.backgroundColor = "#FED8B1";
+            cellFO.style.color = "Black";
+        }
+        else if(colourState === "alert"){
+            cellFO.style.backgroundColor = "#FF4F00";
+            cellFO.style.color = "Black";
+        }
+        else if(colourState === "alarm"){
+            cellFO.style.backgroundColor = "MediumSpringGreen";
+            cellFO.style.color = "Black";
+        }
+        else if(colourState === "clear"){
+            cellFO.removeAttribute("style");
+        }
+    }
+    // Extract the current world and convert string to manual dsv format
+    function worldSplitter(input) {
+        let worldInt = NaN;
+        if(input.search(/cape|caoe|cane/)>-1){
+            worldInt = parseInt( replaceOCRN(input.substring(input.search(/cape|caoe|cane/)+4,input.search(/cape|caoe|cane/)+10)), 10);
+        }
+        const processedInput = `${worldInt};${input}`;
+        return processedInput;
+    }
+    // Creates a detail summary block
+    function createDetailsElement(summaryText, paragraphText) {
+        const dropDown = document.createElement("details");
+        const dropDownSummary = document.createElement("summary");
+        const dropDownSummaryP = document.createElement("p");
+
+        // Set the text content for the summary and paragraph
+        dropDownSummary.textContent = summaryText;
+        dropDownSummaryP.textContent = paragraphText;
+
+        // Append the summary and paragraph to the details element
+        dropDown.appendChild(dropDownSummary);
+        dropDown.appendChild(dropDownSummaryP);
+
+        return dropDown; // Return the details element
+    }
+    // Copy to clipboard
+    function copyToClipboard(Text){
+        navigator.clipboard.writeText(Text).then(() => {
+            console.info("Copied to clipboard: ", Text);
+            // alert("Copied to clipboard: " + exportText);
+        }).catch((err) => {
+            console.error("Error copying to clipboard: ", err);
+        });
+    }
+    // Region parser, return array [full, code]
+    function regionParser(inputphraseMain){
+        // Returns an array[0_Full Name, 1_Code]
+
+        const inputphrase = String(inputphraseMain);
+        let location_of_star = [""];
+
+        if(inputphrase.indexOf("Anachronia") > -1 || inputphrase.indexOf("onia") > -1 || inputphrase.indexOf("1️⃣") > -1 ){
+            location_of_star[0] = "Anachronia";
+            location_of_star[1] = "1️⃣";
+        }
+        else if(inputphrase.indexOf("Asgarnia") > -1 || inputphrase.indexOf("rnia") > -1 || inputphrase.indexOf("2️⃣") > -1){
+            location_of_star[0] = "Asgarnia";
+            location_of_star[1] = "2️⃣";
+        }
+        else if(inputphrase.indexOf("Ashdale") > -1 || inputphrase.indexOf("dale") > -1 || inputphrase.indexOf("3️⃣") > -1){
+            location_of_star[0] = "Ashdale";
+            location_of_star[1] = "3️⃣";
+        }
+        else if(inputphrase.indexOf("Crandor") > -1 || inputphrase.indexOf("amja") > -1 || inputphrase.indexOf("4️⃣") > -1){
+            location_of_star[0] = "Crandor/Karamja";
+            location_of_star[1] = "4️⃣";
+        }
+        else if(inputphrase.indexOf("Daemonheim") > -1 || inputphrase.indexOf("sula") > -1 || inputphrase.indexOf("5️⃣") > -1){
+            location_of_star[0] = "Daemonheim";
+            location_of_star[1] = "5️⃣";
+        }
+        else if(inputphrase.indexOf("Feldip") > -1 || inputphrase.indexOf("ills") > -1 || inputphrase.indexOf("6️⃣") > -1){
+            location_of_star[0] = "Feldip Hills";
+            location_of_star[1] = "6️⃣";
+        }
+        else if(inputphrase.indexOf("Fremennik") > -1 || inputphrase.indexOf("unar") > -1 || inputphrase.indexOf("7️⃣") > -1){
+            location_of_star[0] = "Fremennik/Lunar Isle";
+            location_of_star[1] = "7️⃣";
+        }
+        else if(inputphrase.indexOf("Kandarin") > -1 || inputphrase.indexOf("arin") > -1 || inputphrase.indexOf("8️⃣") > -1){
+            location_of_star[0] = "Kandarin";
+            location_of_star[1] = "8️⃣";
+        }
+        else if(inputphrase.indexOf("Desert") > -1 || inputphrase.indexOf("dian") > -1 || inputphrase.indexOf("9️⃣") > -1){
+            location_of_star[0] = "Kharidian Desert";
+            location_of_star[1] = "9️⃣";
+        }
+        else if(inputphrase.indexOf("Grove") > -1 || inputphrase.indexOf("ost") > -1 || inputphrase.indexOf("🇦") > -1){
+            location_of_star[0] = "Lost Grove";
+            location_of_star[1] = "🇦";
+        }
+        else if(inputphrase.indexOf("Menaphos") > -1 || inputphrase.indexOf("phos") > -1 || inputphrase.indexOf("🇧") > -1){
+            location_of_star[0] = "Menaphos";
+            location_of_star[1] = "🇧";
+        }
+        else if(inputphrase.indexOf("Misthalin") > -1 || inputphrase.indexOf("alin") > -1 || inputphrase.indexOf("🇨") > -1){
+            location_of_star[0] = "Misthalin";
+            location_of_star[1] = "🇨";
+        }
+        else if(inputphrase.indexOf("Morytania") > -1 || inputphrase.indexOf("armless") > -1 || inputphrase.indexOf("🇩") > -1){
+            location_of_star[0] = "Morytania/Mos Le'Harmless";
+            location_of_star[1] = "🇩";
+        }
+        else if(inputphrase.indexOf("Piscatoris") > -1 || inputphrase.indexOf("nnwn") > -1 || inputphrase.indexOf("🇪") > -1){
+            location_of_star[0] = "Piscatoris/Gnome/Tirannwn";
+            location_of_star[1] = "🇪";
+        }
+        else if(inputphrase.indexOf("Tuska") > -1 || inputphrase.indexOf("uska") > -1 || inputphrase.indexOf("🇫") > -1){
+            location_of_star[0] = "Tuska";
+            location_of_star[1] = "🇫";
+        }
+        else if(inputphrase.indexOf("Wilderness") > -1 || inputphrase.indexOf("derness") > -1 || inputphrase.indexOf("🔟") > -1){
+            location_of_star[0] = "Wilderness";
+            location_of_star[1] = "🔟";
+        }
+        else {
+            // location_of_star = "ERROR-UNDEF-LOC";
+            location_of_star[0] = "⚠️#REG!";
+            location_of_star[1] = "⚠️";
+        }
+        return location_of_star;
+    }
+    // Time parser, return array [JS_time, SL_time, 36encode]
+    function SGTE_TimeParser(inputTimeVar,modeSelector){
+        let returnTimeVar = []; // Array [    0_JS_time,
+        //                                    1_SL_time </1000>,
+        //                                    2_compressed_time </1000.toString36>    ]
+        if(modeSelector==="from36"){
+
+            returnTimeVar[2] = inputTimeVar;
+            returnTimeVar[1] = parseInt(returnTimeVar[2], 36);
+            returnTimeVar[0] = Number(returnTimeVar[1])*1000;
+            if(inputTimeVar === "NaN"){
+                returnTimeVar = [];
+            }
+        }
+        else if(modeSelector==="to36"){
+            returnTimeVar[0] = inputTimeVar;
+            returnTimeVar[1] = Number(inputTimeVar)/1000;
+            returnTimeVar[2] = returnTimeVar[1].toString(36);
+        }
+        return returnTimeVar;
+    }
+    // Additional World Data, return 'additional data' or undefined
+    function additionalWorldData(worldlookup){
+        const arrayWorldData = [
+            [18, '[leg]'], [30, '[2000]'], [47, '[pt]'], [48, '[2600]'], [52, '[vip]'],
+            [75, '[pt]'], [86, '[1500]'], [101, '[pt]'], [102, '[de]'], [114, '[1500]'],
+            [115, '[leg]'], [118, '[fr]'], [121, '[de]'], [137, '[leg]'],
+            [33, '[leg]'], [55, '[fr]'], [57, '[leg]'], [94, '[pt]'], [120, '[leg]'],
+            [122, '[de]'], [136, '[leg]'], [251, '[pt]'],
+        ];
+        // F2P tags
+        // const arrayWorldData = [
+        //     [18, '[leg]'], [30, '[2000]'], [47, '[pt]'], [48, '[2600]'], [52, '[vip]'],
+        //     [75, '[pt]'], [86, '[1500]'], [101, '[pt]'], [102, '[de]'], [114, '[1500]'],
+        //     [115, '[leg]'], [118, '[fr]'], [121, '[de]'], [137, '[leg]'],
+        //     [33, '[F2P] [leg]'], [55, '[F2P] [fr]'], [57, '[F2P] [leg]'], [94, '[F2P] [pt]'], [120, '[F2P] [leg]'],
+        //     [122, '[F2P] [de]'], [136, '[F2P] [leg]'], [251, '[F2P] [pt]'],
+        //     [3, '[F2P]'],[7, '[F2P]'],[8, '[F2P]'],[11, '[F2P]'],[17, '[F2P]'],
+        //     [19, '[F2P]'],[20, '[F2P]'],[29, '[F2P]'],[34, '[F2P]'],[38, '[F2P]'],
+        //     [41, '[F2P]'],[43, '[F2P]'],[61, '[F2P]'],[80, '[F2P]'],[81, '[F2P]'],
+        //     [108, '[F2P]'],[135, '[F2P]'],[141, '[F2P]'],[210, '[F2P]'],[215, '[F2P]'],
+        //     [225, '[F2P]'],[236, '[F2P]'],[239, '[F2P]'],[245, '[F2P]'],[249, '[F2P]'],
+        //     [250, '[F2P]'],[255, '[F2P]'],[256, '[F2P]']
+        // ];
+        const l_worldlookup = Number(worldlookup);
+
+        // Convert the string to a number and find the corresponding pair
+        const result = arrayWorldData.find(pair => pair[0] === parseInt(l_worldlookup));
+
+        // Return the value if found, otherwise return undefined
+        const value = result ? String(result[1]) : undefined;
+
+        return value;
+    }
+    //========================== GENERAL_HELPER_FUNCTIONS_END
+
+    //========================== BUTTONS_&_TEXTBOXES_START
+    // Event listener for the prompt button full parse
+    document.getElementById("addRowFullParse").addEventListener("click", function () {
+        let input = prompt("Universal Input, Accepts the following: \nDSV(World;Transcript), /call, SGTExport and, standard 'Full Transcript'\n  Enter input:");
+        if(input.substring(0,input.indexOf(";")) > 0 && input.indexOf("/call") === -1){
+            // Old format, 12;Star_Transcript
+            handleInput(input); // Straight through to old handleInput()
+        }
+        else if (input.indexOf("/call") > -1){
+            // '/call' pasted
+            // console.log("Detected /call pasted");
+            SGTExportHandle(input);
+        }
+        else if (input.indexOf("《«") > -1){
+            // 'Stargazer Export' format pasted
+            // console.log("Detected ##SGTExport pasted");
+            SGTExportHandle(input);
+
+        }
+        else if (input.indexOf("World    Region           Size Time") === 0){
+            // 'Discord Table' format pasted
+            console.log("Detected Table");
+            SGTExportHandle(input);
+        }
+        else if (input === ""){
+            console.log("empty string");
+        }
+        else{
+            // Handle miscellaneous input, (Telescope, Without a star in the sky)
+            input = input.indexOf(";") > -1 ? input.replace(";", " ") : input; // Inject keywords for filters
+            input = input.indexOf("...") > -1 ? input.replace("...", "...#be size#") : input; // Inject keywords for filters
+            handleInput(worldSplitter(input));
+        }
+        document.getElementById("expInput").focus(); // Refocus
+        updateProgressBar();
+    });
+    // Function for the textarea onpaste
+    // Unreferenced / no usages
+    function onPasteExp(){
+        setTimeout(function() {
+            let input = document.getElementById("expInput").value;
+            if(input.substring(0,input.indexOf(";")) > 0 && input.indexOf("/call") === -1){
+                // Old format, 12;Star_Transcript
+                handleInput(input); // Straight through to old handleInput()
+            }
+            else if (input.indexOf("/call") > -1){
+                // '/call' pasted
+                // console.log("Detected /call pasted");
+                SGTExportHandle(input);
+            }
+            else if (input.indexOf("《«") > -1){
+                // 'Stargazer Export' format pasted
+                // console.log("Detected ##SGTExport pasted");
+                SGTExportHandle(input);
+            }
+            else if (input.indexOf("World    Region           Size Time") === 0){
+                // 'Discord Table' format pasted
+                // console.log("Detected Table");
+                SGTExportHandle(input);
+            }
+            else if (input === ""){
+                console.log("empty string");
+            }
+            else{
+                // Handle miscellaneous input, (Telescope, Without a star in the sky)
+                input = input.indexOf(";") > -1 ? input.replace(";", " ") : input; // Inject keywords for filters
+                input = input.indexOf("...") > -1 ? input.replace("...", "...#be size#") : input; // Inject keywords for filters
+                handleInput(worldSplitter(input));
+            }
+            document.getElementById("expInput").value = "";
+            document.getElementById("expInput").focus(); // Refocus
+            updateProgressBar();
+        }, 0); // Delay of 0 milliseconds to ensure it runs after
+    }
+    function setOnPastePlaceholder(){
+        document.getElementById("expInput").placeholder = "PASTE AREA, Paste here!                                                                                  You see a shooting star! ... ... looks to be size 10. Friends List RuneScape 39";
+    }
+    //========================== BUTTONS_&_TEXTBOXES_END
+
+    //========================== STATUS_BOX_START
+    //======== UTC_CLOCK_START
+    function startUTCClock() {
+        const today = new Date();
+        let h = today.getUTCHours();
+        let m = today.getUTCMinutes();
+        let s = today.getSeconds();
+        h = checkTime(h);
+        m = checkTime(m);
+        s = checkTime(s);
+
+        document.getElementById('utc_clock').innerHTML = `<a title="The current in-game time">UTC:</a> ${h}:${m} <small>${s}</small>`;
+
+        // setTimeout(startUTCClock, 1000); // 60000=1min, function calls itself with setTimeout of (1) second
+    }
+    function checkTime(i) {
+        if (i < 10) {
+            i = "0" + i;
+        }  // Add zero in front of numbers < 10
+        return i;
+    }
+    // Updated clock logic, accounting for millisecond offset on page load
+    // Alarm loop
+    function trackUnixTimeChange() {
+        const synth = window.speechSynthesis; // Used for synth.speak in trackUnixTimeChange(), can be a global
+        let lastUnixTime = Math.floor(Date.now() / 1000); // Get the current Unix time in seconds
+
+        // Calculate the offset to the next top of the second
+        const now = Date.now();
+        const offset = 1000 - (now % 1000); // Time until the next second in milliseconds
+
+        // Function to check the time
+        const checkTime = () => {
+            const currentUnixTime = Math.floor(Date.now() / 1000);
+            startUTCClock(); // Plumbing back into old clock function
+
+            // Check if the Unix time has changed
+            if (currentUnixTime !== lastUnixTime) {
+                // console.log(currentUnixTime);
+                // pip();
+                lastUnixTime = currentUnixTime; // Update the last Unix time
+            }
+            if(UTCDebug === true){ // UTCDebug, skips over to save cycles otherwise, F_UTCDebug(true) to start
+                if (currentUnixTime === UTCDebugNextMinute - 6){
+                    UTCDebugNextMinute = (Math.floor((Date.now()/1000)/60)*60)+120;
+                    activatePIPS();
+                }
+                if (currentUnixTime === UTCDebugNextMinute - 12){
+                    const speechbuildtime = new Date(UTCDebugNextMinute * 1000);
+                    const speechbuild = `At the tone, ${speechbuildtime.getUTCHours()} Hours ${speechbuildtime.getUTCMinutes()} Minutes, Coordinated Universal Time`;
+                    synth.speak(new SpeechSynthesisUtterance(speechbuild));
+                }
+            }
+
+            if (currentUnixTime === G_alarm_time - 6 && funcChb4() && G_alarm_time !== G_alarm2_time){ // Primary use: Main wave timer Alarm, If Star landing equals wave landing, skip wave alarm
+                activatePIPS();
+            }
+            if (currentUnixTime === G_alarm_time - 12 && funcChb4() && G_alarm_time !== G_alarm2_time){
+                const speechbuildtime = new Date(G_alarm_time * 1000);
+                const speechbuild = `At the tone, ${speechbuildtime.getUTCHours()} Hours ${speechbuildtime.getUTCMinutes()} Minutes, Coordinated Universal Time`;
+                synth.speak(new SpeechSynthesisUtterance("Wave"));
+                pip();
+                synth.speak(new SpeechSynthesisUtterance(speechbuild));
+            }
+            if (currentUnixTime === G_alarm2_time - 6 && funcChb4()){ // Primary use: Activated World Alarm
+                activatePIPS();
+            }
+            if (currentUnixTime === G_alarm2_time - 13 && funcChb4()){
+                const speechbuildtime = new Date(G_alarm2_time * 1000);
+                const speechbuild = `At the tone, ${speechbuildtime.getUTCHours()} Hours ${speechbuildtime.getUTCMinutes()} Minutes, Coordinated Universal Time`;
+                synth.speak(new SpeechSynthesisUtterance("Landing"));
+                pip();
+                synth.speak(new SpeechSynthesisUtterance(speechbuild));
+            }
+            if (currentUnixTime === G_alarm3_time - 6 && funcChb4()){ // Primary use: Activated World Alarm, 5 Minute Reminder
+                activatePIPS();
+            }
+            if (currentUnixTime === G_alarm3_time - 14 && funcChb4()){
+                const speechbuildtime = new Date(G_alarm3_time * 1000);
+                const speechbuild = `At the tone, ${speechbuildtime.getUTCHours()} Hours ${speechbuildtime.getUTCMinutes()} Minutes, Coordinated Universal Time`;
+                synth.speak(new SpeechSynthesisUtterance("5 Minute Reminder"));
+                pip();
+                synth.speak(new SpeechSynthesisUtterance(speechbuild));
+            }
+        };
+        // Set a timeout to sync with the top of the second
+        setTimeout(() => {
+            checkTime(); // Check immediately at the top of the second
+            setInterval(checkTime, 1000); // Then check every second
+        }, offset);
+    }
+    //======== UTC_CLOCK_END
+    //======== ACTIVITY_INDICATOR_START
+    function activityColourFlipper(){
+        if(activityIndColour === 0){
+            activityIndColour = 1;
+            document.getElementById('statusCell').style.backgroundColor = 'lightblue';
+            document.getElementById('statusCell').placeholder = "  🔭";
+        }
+        else{
+            activityIndColour = 0;
+            document.getElementById('statusCell').style.backgroundColor = 'lightgreen';
+            document.getElementById('statusCell').placeholder = "  ☄️";
+        }
+    }
+    function activityUpdate(){
+        document.getElementById('status_lastworld').innerHTML = "Last World Scoped: " + lastWorldScoped;
+        if(activityIndChange !== lastWorldScoped){
+            activityColourFlipper();
+            activityIndChange = lastWorldScoped;
+        }
+        else{
+            activityIndChange = lastWorldScoped;
+        }
+    }
+    //======== ACTIVITY_INDICATOR_END
+    //========================== STATUS_BOX_END
+
+    //========================== SETTINGS_BOX_START
+    //======== THEME_BUTTONS_START
+    document.getElementById("toggleTheme").addEventListener("click", function () {
+        document.getElementsByTagName("body")[0].classList.toggle("darktheme");
+        document.getElementsByTagName("input")[0].classList.toggle("darktheme");
+        document.getElementsByTagName("input")[4].classList.toggle("darkthemeTextBox");//1
+        document.getElementsByTagName("input")[6].classList.toggle("darktheme");
+        document.getElementsByTagName("textarea")[0].classList.toggle("darkthemeTextBox");
+        document.getElementById("input_header").classList.toggle("ih_default");
+        document.getElementById("input_header").classList.toggle("darktheme");
+        document.getElementById("expInput").focus();
+
+        document.getElementById("statusBoxMainDiv").classList.toggle("ih_default");
+        document.getElementById("statusBoxMainDiv").classList.toggle("darktheme");
+        document.getElementById("statusBoxC").children[0].children[0].classList.toggle("ih_default");
+        document.getElementById("statusBoxC").children[0].children[0].classList.toggle("darktheme");
+    });
+    document.getElementById("toggleMonospace").addEventListener("click", function () {
+        // Toggle monospace font
+        document.getElementsByTagName("body")[0].classList.toggle("monospace");
+        document.getElementById("expInput").focus();
+    });
+    //======== THEME_BUTTONS_END
+    //======== SETTINGS_BOX_BUTTONS_START
+    document.getElementById('waveTimeLimitButton').addEventListener("click", function() {
+        const timeValue = document.getElementById('waveTimeLimit').value; // Get the time value
+        if (timeValue) {
+
+            const now = new Date(timeValue); // Get the current date
+            G_waveTimeLimit = now.getTime();
+            G_alarm_time = G_waveTimeLimit/1000;
+            const ZULUTime = new Date(G_waveTimeLimit).toISOString();
+            document.getElementById("waveTlimIndcator").innerHTML = "Wave t-lim: <small>🔒⏰("+ZULUTime.substring(11,16)+")<sl-relative-time date="+ZULUTime+" format=\"short\" sync></sl-relative-time></small>";
+            document.getElementById("waveTimeAlertSuccess").show();
+            document.getElementById("expInput").focus();
+
+        } else {
+            if(G_waveTimeLimit === 0 && confirm("❓ \nAuto calculate next, wave time? 🗳️⏱️")){
+                function findNextMultipleOfUnixTime(startingPoint, interval) {
+                    const now = Date.now(); // Get the current time in milliseconds
+                    const elapsed = now - startingPoint; // Calculate the elapsed time since the starting point
+
+                    // Calculate the next multiple
+                    const nextMultiple = Math.ceil(elapsed / interval) * interval + startingPoint;
+
+                    return nextMultiple;
+                }
+                const startingPoint = 1754740800000; // UTC0-Zulu "2025-08-09T12:00:00.000Z"
+                const interval = 7680000; // The interval in milliseconds
+                G_waveTimeLimit = findNextMultipleOfUnixTime(startingPoint, interval);
+                G_alarm_time = G_waveTimeLimit/1000;
+                const ZULUTime = new Date(G_waveTimeLimit).toISOString();
+                document.getElementById("waveTlimIndcator").innerHTML = "Wave t-lim: <small>🔒⏰("+ZULUTime.substring(11,16)+")<sl-relative-time date="+ZULUTime+" format=\"short\" sync></sl-relative-time></small>";
+                document.getElementById("waveTimeAlertSuccess").show();
+                document.getElementById("expInput").focus();
+                return;
+            }
+            else{
+                document.getElementById("generalAlertWarning").innerText = "ℹ️ Information Alert,\nPlease enter in a time.";
+                document.getElementById("generalAlertWarning").show();
+            }
+            console.log('Please select a time.');
+            document.getElementById("expInput").focus();
+        }
+    });
+    document.getElementById('plusWaveButton').addEventListener("click", function() {
+        if(G_waveTimeLimit !== 0 && confirm("ℹ️ \nConfirm to add 2 Hours 8 Minutes, \nto the Wave Time Limit. 🕑")){
+            G_waveTimeLimit += 7680000; // 128 minutes in milliseconds
+            G_alarm_time = G_waveTimeLimit/1000;
+            const ZULUTime = new Date(G_waveTimeLimit).toISOString();
+            document.getElementById("waveTlimIndcator").innerHTML = "Wave t-lim: <small>🔒⏰("+ZULUTime.substring(11,16)+")<sl-relative-time date="+ZULUTime+" format=\"short\" sync></sl-relative-time></small>";
+            document.getElementById("timeAddAlertSuccess").show();
+            document.getElementById("expInput").focus();
+        } else {
+            if(G_waveTimeLimit === 0 && confirm("❓ \nAuto calculate next, wave time? 🗳️⏱️")){
+                function findNextMultipleOfUnixTime(startingPoint, interval) {
+                    const now = Date.now(); // Get the current time in milliseconds
+                    const elapsed = now - startingPoint; // Calculate the elapsed time since the starting point
+
+                    // Calculate the next multiple
+                    const nextMultiple = Math.ceil(elapsed / interval) * interval + startingPoint;
+
+                    return nextMultiple;
+                }
+                const startingPoint = 1754740800000; // UTC0-Zulu "2025-08-09T12:00:00.000Z"
+                const interval = 7680000; // The interval in milliseconds
+                G_waveTimeLimit = findNextMultipleOfUnixTime(startingPoint, interval);
+                G_alarm_time = G_waveTimeLimit/1000;
+                const ZULUTime = new Date(G_waveTimeLimit).toISOString();
+                document.getElementById("waveTlimIndcator").innerHTML = "Wave t-lim: <small>🔒⏰("+ZULUTime.substring(11,16)+")<sl-relative-time date="+ZULUTime+" format=\"short\" sync></sl-relative-time></small>";
+                document.getElementById("waveTimeAlertSuccess").show();
+                document.getElementById("expInput").focus();
+                return;
+            }
+            else{
+                document.getElementById("generalAlertWarning").innerText = "ℹ️ Information Alert,\nAction cancelled.";
+                document.getElementById("generalAlertWarning").show();
+            }
+            console.log('Please set a time, first.');
+            document.getElementById("expInput").focus();
+        }
+    });
+    //=== WORLD ALARMS
+    document.getElementById('alarmWorldButton').addEventListener("click", function() {
+        const alarmWorld = Number(document.getElementById('alarmWorldTextbox').value);
+        if(alarmWorld === undefined || NaN ){
+            return false;
+        }
+
+        const l_DOM_table = document.getElementById("datatable").getElementsByTagName("tbody")[0];
+        const l_HoldArray = [];
+
+
+        for (let i = 0; i < l_DOM_table.children.length; i++) {
+            if(l_DOM_table.children[i].children[1] === undefined){
+                // void
+            }
+            else{
+                try {
+                    const textContent = Number(l_DOM_table.children[i].children[1].textContent.trim().substring(1)); // [1] is World
+                    if (textContent === alarmWorld) {
+                        l_HoldArray.push(i);
+                    }
+                } catch (err) {
+                    console.log(err);
+                }
+            }
+        }
+
+        const mapArray = [];
+        for (let i = 0; i < l_HoldArray.length; i++) {
+            mapArray[i] = i ;
+        }
+
+        if(l_HoldArray.length > 0){
+            for (let i = 0; i < l_DOM_table.children.length; i++) { // Clear all, alarm, cell highlight
+                colourCell(l_DOM_table.children[i].children[4],"clear");
+            }
+
+            G_alarm2_time = Number(l_DOM_table.children[l_HoldArray[0]].children[8].textContent.trim())/1000;
+            colourCell(l_DOM_table.children[l_HoldArray[0]].children[4],"alarm");
+            const ZULUTime = new Date(Number(l_DOM_table.children[l_HoldArray[0]].children[8].textContent.trim())).toISOString();
+            document.getElementById("starfallAlarm").innerHTML = "<small title='World alarm'>🗺️⏰: ("+ZULUTime.substring(11,16)+")<sl-relative-time date="+ZULUTime+" format=\"short\" sync></sl-relative-time></small>";
+
+            if(confirm("5️⃣🚩 Add 5 minute reminder as well?\nThis will be an additional alarm at 5 mins before and when it lands.")){
+                G_alarm3_time = G_alarm2_time - 300; // 300 sec = 5 mins
+                document.getElementById("starfallAlarm").innerHTML += "<small title='5 min reminder set'>5️⃣🚩</small><div class=\"divbreak2\"></div>";
+                document.getElementById("generalAlertSuccess").innerText = "ℹ️ World alarm Set + \n5 min reminder set 5️⃣🚩";
+                document.getElementById("generalAlertSuccess").show();
+            }else{
+                document.getElementById("starfallAlarm").innerHTML += "<small title='NO reminder active'>ℹ️✅</small><div class=\"divbreak2\"></div>";
+                document.getElementById("generalAlertSuccess").innerText = "ℹ️ World alarm Set, \nNO reminder set ✅";
+                document.getElementById("generalAlertSuccess").show();
+            }
+
+            document.getElementById("activityBlock").style.display = "none"; // Hide the activity block since we're not using it
+        }
+        else{
+            // void
+            console.log("Specified world not found.");
+            document.getElementById("generalAlertWarning").innerText = "ℹ️❔ \nSpecified world not found.";
+            document.getElementById("generalAlertWarning").show();
+        }
+        document.getElementById("expInput").focus();
+    });
+    document.getElementById('alarmWorldCLButton').addEventListener("click", function() {
+        if(confirm("ℹ️❓ \nClear world alarm(s)?")){
+            G_alarm2_time = 0;
+            G_alarm3_time = 0;
+            // Change div activity indicator display:none to inline
+            document.getElementById("activityBlock").style.display = "inline";
+            document.getElementById("starfallAlarm").innerHTML = ""; // Clear alarm in display
+            document.getElementById("generalAlertSuccess").innerText = "✅ World alarm(s) cleared";
+            document.getElementById("generalAlertSuccess").show();
+        }
+        else{
+            document.getElementById("generalAlertWarning").innerText = "ℹ️ Information Alert,\nAction cancelled.";
+            document.getElementById("generalAlertWarning").show();
+        }
+        document.getElementById("expInput").focus(); // Refocus
+    });
+    document.getElementById('tlimCLButton').addEventListener("click", function() {
+        if(confirm("ℹ️❓ \nClear Wave time limit?")){
+            G_waveTimeLimit = 0;
+            G_alarm_time = 0;
+            // Change div activity indicator display:none to inline
+            document.getElementById("waveTlimIndcator").innerHTML = ""; // Clear alarm in display
+            document.getElementById("waveTlimIndcator").innerText = "Wave t-limit: 🔕 UNSET";
+            document.getElementById("generalAlertSuccess").innerText = "✅ Wave t-limit cleared";
+            document.getElementById("generalAlertSuccess").show();
+        }
+        else{
+            document.getElementById("generalAlertWarning").innerText = "ℹ️ Information Alert,\nAction cancelled.";
+            document.getElementById("generalAlertWarning").show();
+        }
+        document.getElementById("expInput").focus(); // Refocus
+    });
+    document.getElementById('resyncSLRButton').addEventListener("click", function() {
+        resync_SlRelativeTime();
+        document.getElementById("generalAlertSuccess").innerText = "🔁 \nAll Relative Time fields \nresynchronised.";
+        document.getElementById("generalAlertSuccess").show();
+        document.getElementById("expInput").focus(); // Refocus
+    });
+    //======== SETTINGS_BOX_BUTTONS_END
+    //========================== SETTINGS_BOX_END
+
+    //========================== OPTIONS_BOX_START
+    //======== OPTIONS_BOX_BUTTONS_START
+    document.getElementById("buttonScrollToTop").addEventListener("click", function () {
+        activateScrollToTop();
+        document.getElementById("expInput").focus();
+    });
+    document.getElementById("buttonScrollToTB").addEventListener("click", function () {
+        window.scroll(0,0);
+        document.getElementById("input_header").scrollIntoView({ behavior: "smooth",});
+        document.getElementById("expInput").focus();
+    });
+    document.getElementById('clearTableButton').addEventListener("click", function() {
+        const button = document.getElementById("clearTableButton2");
+        button.style.display = "inline";
+        document.getElementById("generalAlertWarning").innerText = "⚠️ Warning,\nThis is irreversible.\nClick 🛑 to confirm.";
+        document.getElementById("generalAlertWarning").show();
+        document.getElementById("expInput").focus();
+    });
+    document.getElementById('clearTableButton2').addEventListener("click", function() {
+        const button = document.getElementById("clearTableButton2");
+        if(confirm("⚠️ \nConfirm to purge the whole table, \nThis is irreversible. 🛑")){
+            const table = document.getElementById("datatable").getElementsByTagName("tbody")[0];
+            table.replaceChildren();
+            button.style.display = "none";
+            document.getElementById("generalAlertSuccess").innerText = "✅ Table cleared";
+            document.getElementById("generalAlertSuccess").show();
+            document.getElementById("expInput").focus();
+        } else {
+            document.getElementById("generalAlertWarning").innerText = "ℹ️ Information Alert,\nAction cancelled.";
+            document.getElementById("generalAlertWarning").show();
+            button.style.display = "none";
+            document.getElementById("expInput").focus();
+        }
+    });
+    document.getElementById("buttonLineBreak").addEventListener("click", function () {
+        // Get the table body
+        const table = document.getElementById("datatable").getElementsByTagName("tbody")[0];
+
+        // Create a new row
+        let newRow;
+        if(funcChb3()){
+            newRow = table.insertRow(0);
+        }
+        else{
+            newRow = table.insertRow();
+        }
+
+        const cell0 = newRow.insertCell(0);
+        const buttonRMRow = document.createElement("button");
+        buttonRMRow.textContent = "⏏️";
+
+        // Add an event listener to the button to delete the row when clicked
+        buttonRMRow.addEventListener("click", function() {
+            const rowToDelete = this.closest("tr"); // Get the row that contains the button
+            rowToDelete.remove();
+        });
+        cell0.appendChild(buttonRMRow);
+        document.getElementById("expInput").focus();
+    });
+    //======== OPTIONS_BOX_BUTTONS_END
+    //=== Generate a report from the table
+    document.getElementById('buttonTableQuery').addEventListener("click", function() {
+        // SlAlert, used to trigger alert/toast popups
+        const successMessage = document.getElementById("queryAlertSuccess");
+        const successMessage2 = document.getElementById("querySortAlertSuccess");
+        // local variables, used as semi-globals
+        const filter1 = String(document.getElementById("exportOptionsRegionSelect").value);
+        const filter2 = String(document.getElementById("exportOptionsSizeSelect").value);
+        const LM_DOM_table = document.getElementById("datatable").getElementsByTagName("tbody")[0];
+
+        let LM_HoldArrayA = [];
+        let LM_HoldArrayB = [];
+        let LM_HoldArrayC = [];
+        let LM_HoldArrayD = [];
+        let LM_report = "";
+
+        // default:default, Returns a report of Size 10,9,8,7 + Feldip Hills starstruck
+        if(filter1==="default" && filter2==="default"){
+            // Trigger sort functions in order,
+            // Duplicates -> World(l>h) -> LandingTime(l>h) -> Size(h>l)
+            document.getElementById('sortDupButton').click();
+            document.getElementById('sortWorldButton').click();
+            document.getElementById('sortTimeButton').click();
+            document.getElementById('sortSizeButton').click();
+
+
+            let first3length = 0; // Counts number of rows to truncate if needed
+            LM_HoldArrayA = L_func_searchWholeTable("s10","S");
+            LM_HoldArrayB = L_func_searchWholeTable("s9","S");
+            LM_HoldArrayC = L_func_searchWholeTable("s8","S");
+            LM_HoldArrayD = L_func_searchWholeTable("s7","S");
+
+            // Build the report
+            if(LM_HoldArrayA.length > 0){ // Size 10
+                LM_report += "`Size 10:`\n";
+            }else{
+                LM_report += "`Size 10:`\n";
+                LM_report += "No stars found size 10.\n";
+                first3length += 1;
+            }
+            LM_report += L_func_BuildReport(LM_HoldArrayA,"part");
+
+            if(LM_HoldArrayB.length > 0){ // Size 9
+                LM_report += "\n";
+                LM_report += "`Size 9:`\n";
+            }else{
+                LM_report += "\n";
+                LM_report += "`Size 9:`\n";
+                LM_report += "No stars found size 9.\n";
+                first3length += 1;
+            }
+            LM_report += L_func_BuildReport(LM_HoldArrayB,"part");
+
+            if(LM_HoldArrayC.length > 0){ // Size 8
+                LM_report += "\n";
+                LM_report += "`Size 8:`\n";
+            }else{
+                LM_report += "\n";
+                LM_report += "`Size 8:`\n";
+                LM_report += "No stars found size 8.\n";
+                first3length += 1;
+            }
+            LM_report += L_func_BuildReport(LM_HoldArrayC,"part");
+
+            if(LM_HoldArrayD.length > 0){ // Size 7
+                LM_report += "\n";
+                LM_report += "`Size 7:`\n";
+            }else{
+                LM_report += "\n";
+                LM_report += "`Size 7:`\n";
+                LM_report += "No stars found size 7.\n";
+            }
+            first3length += LM_HoldArrayA.length + LM_HoldArrayB.length + LM_HoldArrayC.length; // Count rows
+            const reportLineLimit = 16;
+            const reportLineLimitLeft = reportLineLimit - first3length;
+
+            if (reportLineLimitLeft <= LM_HoldArrayD.length){
+                // Use the limit
+                for (let i = 0; i < reportLineLimitLeft; i++) {
+                    const textContent = LM_DOM_table.children[LM_HoldArrayD[i]].children[4].children[0].children[1].textContent.substring(9).trim(); // [4] cell with single report, 9 should cut off the "size:10" text, trim to account for 2 chars long
+                    LM_report += textContent;
+                    LM_report += "\n";
+                }
+                LM_report += "_… (truncated, use filters to see more)_\nSee: <#1284230439661207613> for locations.\n";
+            }
+            else{
+                // Display the whole array
+                LM_report += L_func_BuildReport(LM_HoldArrayD,"part");
+                LM_report += "See: <#1284230439661207613> for locations.\n";
+            }
+
+            // Part 2 of report, Starstruck for Feldip Hills
+            LM_HoldArrayA = []; // Null the array for reuse
+            LM_HoldArrayA = L_func_searchWholeTable("Feldip","R");
+
+            if(LM_HoldArrayA.length > 0){
+                LM_report += "\n\nStar(s) called for the [Starstruck](<https://runescape.wiki/w/Starstruck>) achievement:\n";
+                LM_report += "\n";
+            }else{
+                LM_report += "\n\nStar(s) called for the [Starstruck](<https://runescape.wiki/w/Starstruck>) achievement:\n";
+                LM_report += "No stars found for the Starstruck achievement.\n";
+            }
+            if(LM_HoldArrayA.length > 0){
+                LM_report += "[Feldip Hills](<https://starfind.net/maps/#feld-feldip-hills>)\n";
+                LM_report += L_func_BuildReport(LM_HoldArrayA,"whole");
+            }
+
+            copyToClipboard(LM_report);
+            document.getElementById("expInput").focus();
+        }
+        else{
+            // Filter on criteria, NOT default:default
+            // Starstruck:null, Returns a report Starstruck Feldip Hills & F2P Crandor
+            if(filter1==="Starstruck"){
+                for (let i = 0; i < LM_DOM_table.children.length; i++) {
+                    try{
+                        const textContent = LM_DOM_table.children[i].children[2].textContent; // [3] is Location
+                        if (textContent.includes("Feldip")) {
+                            LM_HoldArrayA.push(i);
+                        }
+                        if (textContent.includes("Crandor")) {
+                            const worldField = LM_DOM_table.children[i].children[1].textContent.trim().substring(1); // [1] is World
+                            LM_HoldArrayB.push([i, worldField]);
+                        }
+                    }catch(err){
+                        console.log(err);
+                    }
+                }
+
+                // Filter LM_HoldArrayB for F2P
+                const F2P_filter = new Set([
+                    "3","7","8","11","17","19","20","29","33","34",
+                    "38","41","43","55","57","61","80","81","94","108",
+                    "120","122","135","136","141","210","215","225","236","239",
+                    "245","249","250","251","255","256"
+                ]);
+
+                // Filter 'LM_HoldArrayB', checking if the second element of each sub-array exists in the Set 'F2P_filter'
+                let intersection = LM_HoldArrayB.filter(value => F2P_filter.has(value[1]));
+                intersection = intersection.map(subArray => subArray[0]);// Strip world data
+
+
+                // Build the report
+                if(LM_HoldArrayA.length > 0 || intersection.length > 0){
+                    LM_report += "Star(s) called for the [Starstruck](<https://runescape.wiki/w/Starstruck>) achievement:\n";
+                    LM_report += "\n";
+                }else{
+                    LM_report += "No stars found for the Starstruck achievement.\n";
+                }
+                if(LM_HoldArrayA.length > 0){
+                    LM_report += "[Feldip Hills](<https://starfind.net/maps/#feld-feldip-hills>)\n";
+                    LM_report += L_func_BuildReport(LM_HoldArrayA,"whole");
+                }
+                if(intersection.length > 0){
+                    if(LM_HoldArrayA.length > 0 ){
+                        LM_report += "\n";
+                    }
+                    LM_report += "[Crandor](<https://starfind.net/maps/#ck-crandor-karamja>) [F2P]\n";
+                    LM_report += L_func_BuildReport(intersection,"whole");
+                }
+            }
+            // defaultf2p:null, Returns a report Only F2P worlds, Size 5/Average stars + Crandor starstruck
+            else if(filter1==="defaultf2p"){
+                // Trigger sort functions in order,
+                // Duplicates -> World(l>h) -> LandingTime(l>h) -> Size(h>l)
+                document.getElementById('sortDupButton').click();
+                document.getElementById('sortWorldButton').click();
+                document.getElementById('sortTimeButton').click();
+                document.getElementById('sortSizeButton').click();
+
+                for (let i = 0; i < LM_DOM_table.children.length; i++) {
+                    try{
+                        const textContent = LM_DOM_table.children[i].children[3].textContent; // [3] is Size
+                        if (textContent.includes("s5") || textContent.includes("Average") ) {
+                            const worldField = LM_DOM_table.children[i].children[1].textContent.trim().substring(1); // [1] is World
+                            LM_HoldArrayA.push([i, worldField]);
+                        }
+                    }
+                    catch(err){
+                        console.log(err);
+                    }
+                }
+
+                // Filter LM_HoldArrayA for F2P
+                const F2P_filter = new Set([
+                    "3","7","8","11","17","19","20","29","33","34",
+                    "38","41","43","55","57","61","80","81","94","108",
+                    "120","122","135","136","141","210","215","225","236","239",
+                    "245","249","250","251","255","256"
+                ]);
+                // Filter 'LM_HoldArrayA', checking if the second element of each sub-array exists in the Set 'F2P_filter'
+                let intersection = LM_HoldArrayA.filter(value => F2P_filter.has(value[1]));
+                intersection = intersection.map(subArray => subArray[0]); // Strip world data
+
+                // Build the report
+                if(intersection.length > 0){
+                    const reportLineLimit = 16;
+                    LM_report += "[F2P] `Size 5/Average 4-6:`\n";
+                    LM_report += "\n";
+                    if(reportLineLimit < intersection.length){
+                        for (let i = 0; i < reportLineLimit; i++) {
+                            const textContent = LM_DOM_table.children[intersection[i]].children[4].children[0].children[1].textContent.trim(); // [4] is cell with single report
+                            LM_report += textContent;
+                            LM_report += "\n";
+                        }
+                        LM_report += "_… (truncated, use filters to see more)_\nSee: <#1284230439661207613> for locations.\n";
+                    }else{
+                        LM_report += L_func_BuildReport(intersection,"whole");
+                        LM_report += "See: <#1284230439661207613> for locations.\n";
+                    }
+                }
+                else{
+                    LM_report += "`Size 5/Average 4-6:`\n";
+                    LM_report += "No stars found size 5/Average 4-6.\n";
+                }
+
+                // Part 2, F2P starstruck Crandor
+                LM_HoldArrayA = []; // Null the array for reuse
+                for (let i = 0; i < LM_DOM_table.children.length; i++) {
+                    try{
+                        const textContent = LM_DOM_table.children[i].children[2].textContent; // [3] is Location
+                        if (textContent.includes("Crandor")) {
+                            const worldField = LM_DOM_table.children[i].children[1].textContent.trim().substring(1); // [1] is World
+                            LM_HoldArrayA.push([i, worldField]);
+                        }
+                    }
+                    catch(err){
+                        console.log(err);
+                    }
+                }
+
+                // Filter LM_HoldArrayA for F2P
+                // Filter 'LM_HoldArrayA', checking if the second element of each sub-array exists in the Set 'F2P_filter'
+                intersection = LM_HoldArrayA.filter(value => F2P_filter.has(value[1]));
+                intersection = intersection.map(subArray => subArray[0]); // Strip world data
+
+                // Build the report
+                if(intersection.length > 0){
+                    LM_report += "\n\nStar(s) called for the [Starstruck](<https://runescape.wiki/w/Starstruck>) achievement:\n";
+                    LM_report += "\n";
+
+                }else{
+                    LM_report += "\n\nStar(s) called for the [Starstruck](<https://runescape.wiki/w/Starstruck>) achievement:\n";
+                    LM_report += "No stars found for the Starstruck achievement.\n";
+                }
+                if(intersection.length > 0){
+                    LM_report += "[Crandor](<https://starfind.net/maps/#ck-crandor-karamja>) [F2P]\n";
+                    LM_report += L_func_BuildReport(intersection,"whole");
+                }
+            }
+            // 7️⃣:null, Returns Size 10,9,8,7 + Feldip Hills in 'Stargazer Export' format
+            else if(filter1==="7️⃣"){
+                LM_HoldArrayA = L_func_searchWholeTable("s10","S");
+                LM_HoldArrayB = L_func_searchWholeTable("s9","S");
+                LM_HoldArrayC = L_func_searchWholeTable("s8","S");
+                LM_HoldArrayD = L_func_searchWholeTable("s7","S");
+
+                LM_HoldArrayA = LM_HoldArrayA.concat(LM_HoldArrayB,LM_HoldArrayC,LM_HoldArrayD);
+                LM_HoldArrayB = [];
+                LM_HoldArrayC = [];
+                LM_HoldArrayD = [];
+
+                LM_HoldArrayB = L_func_searchWholeTable("Feldip","R");
+
+                // Build the report
+                if(funcChb3()){
+                    LM_HoldArrayC = LM_HoldArrayA.reverse();
+                    LM_HoldArrayD = LM_HoldArrayB.reverse();
+                    LM_report += L_func_BuildReport(LM_HoldArrayD,"export");
+                    LM_report += "《«NaN«⚠️«NaN«⚠️«WRS«》\n"; // Blank line, Starstruck may repeat worlds, if 7+
+                    LM_report += L_func_BuildReport(LM_HoldArrayC,"export");
+                }else{
+                    LM_report += L_func_BuildReport(LM_HoldArrayA,"export");
+                    LM_report += "《«NaN«⚠️«NaN«⚠️«WRS«》\n"
+                    LM_report += L_func_BuildReport(LM_HoldArrayB,"export");
+                }
+            }
+            // 🇩📊:null, Finds Duplicate entries on the World column, highlights result
+            else if(filter1==="🇩📊"){ // Duplicates
+                for (let i = 0; i < LM_DOM_table.children.length; i++) {
+                    try{
+                        const textContent = LM_DOM_table.children[i].children[1].textContent.trim().substring(1); // [1] is World
+                        LM_HoldArrayA.push([i,textContent]);
+                    }catch(err){
+                        // console.log(err);
+                        console.log(`Blank line, found in row ${i}`);
+                    }
+                }
+
+                function findDuplicateIndices(arr) {
+                    const indexMap = {};
+                    const duplicates = [];
+
+                    // Iterate through the array to map indices of each element
+                    arr.forEach((pair, index) => {
+                        const item = pair[1]; // Get the second element of each pair
+                        if (!indexMap[item]) { // If second element is not in indexMap add to indexMap
+                            indexMap[item] = []; // Mutates indexMap by adding a property named [item]
+                        }
+                        indexMap[item].push(index); // Push the current index into the array stored at indexMap[item] (mutates that inner array)
                     });
 
-                    actionCell.appendChild(buttonGC);
-
-                    activityUpdate(); // Trigger a lookup of activity
-
-                    // Option to generate to clipboard on input
-                    if(funcChb2()){
-                        generateDiscord(cell1,cell2,timestampCell,esCell,actionCell);
+                    // Collect indices of elements that have duplicates
+                    for (const indices of Object.values(indexMap)) {
+                        if (indices.length > 1) { // for arrays in indexMap > 1
+                            duplicates.push(...indices); // Add to array duplicates[] using .push and spread function
+                        }
                     }
 
-                    // Clear the textbox after adding the row
-                    document.getElementById("csvInput").value = "";
-                } else {
-                    alert("Please enter exactly 2 values separated by a Semicolon.");
+                    return duplicates;
                 }
-            }
-        }
-        //========================== MAIN_FUNCTION_END
-        
-        //========================== MAIN_GEN_FUNCTION_START
-        function generateDiscord(cell1,cell2,tsCell,esCell,aCell) {
-            let column1Data = cell1.textContent;
-            let inputphrase = cell2.textContent;
 
-            //========================== LOCATION_START
-            // elseif ladder to determine the location
-            let location_of_star = "location";
+                // Find the Duplicates
+                const arrayDuplicates = findDuplicateIndices(LM_HoldArrayA);
 
-            if(inputphrase.indexOf("Anachronia") > -1 || inputphrase.indexOf("onia") > -1){
-                location_of_star = "Anachronia";
-            }
-            else if(inputphrase.indexOf("Asgarnia") > -1 || inputphrase.indexOf("rnia") > -1){
-                location_of_star = "Asgarnia";
-            }
-            else if(inputphrase.indexOf("Ashdale") > -1 || inputphrase.indexOf("dale") > -1){
-                location_of_star = "Ashdale";
-            }
-            else if(inputphrase.indexOf("Crandor") > -1 || inputphrase.indexOf("amja") > -1){
-                location_of_star = "Crandor/Karamja";
-            }
-            else if(inputphrase.indexOf("Daemonheim") > -1 || inputphrase.indexOf("sula") > -1){
-                location_of_star = "Daemonheim";
-            }
-            else if(inputphrase.indexOf("Feldip") > -1 || inputphrase.indexOf("ills") > -1){
-                location_of_star = "Feldip Hills";
-            }
-            else if(inputphrase.indexOf("Fremennik") > -1 || inputphrase.indexOf("unar") > -1){
-                location_of_star = "Fremennik/Lunar Isle";
-            }
-            else if(inputphrase.indexOf("Kandarin") > -1 || inputphrase.indexOf("arin") > -1){
-                location_of_star = "Kandarin";
-            }
-            else if(inputphrase.indexOf("Desert") > -1 || inputphrase.indexOf("dian") > -1){
-                location_of_star = "Kharidian Desert";
-            }
-            else if(inputphrase.indexOf("Grove") > -1 || inputphrase.indexOf("ost") > -1){
-                location_of_star = "Lost Grove";
-            }
-            else if(inputphrase.indexOf("Menaphos") > -1 || inputphrase.indexOf("phos") > -1){
-                location_of_star = "Menaphos";
-            }
-            else if(inputphrase.indexOf("Misthalin") > -1 || inputphrase.indexOf("alin") > -1){
-                location_of_star = "Misthalin";
-            }
-            else if(inputphrase.indexOf("Morytania") > -1 || inputphrase.indexOf("armless") > -1){
-                location_of_star = "Morytania/Mos Le'Harmless";
-            }
-            else if(inputphrase.indexOf("Piscatoris") > -1 || inputphrase.indexOf("nnwn") > -1){
-                location_of_star = "Piscatoris/Gnome/Tirannwn";
-            }
-            else if(inputphrase.indexOf("Tuska") > -1 || inputphrase.indexOf("uska") > -1){
-                location_of_star = "Tuska";
-            }
-            else if(inputphrase.indexOf("Wilderness") > -1 || inputphrase.indexOf("derness") > -1){
-                location_of_star = "Wilderness";
-            }
-            else {
-                location_of_star = "ERROR-UNDEF-LOC";
-            }
-            //========================== LOCATION_END
-            
-            //========================== TIME_START
-            const time_text_start = "next";
-            const time_text_end = "to ";
-            let time_text_startIndex = inputphrase.indexOf(time_text_start) + 4;
-            let time_text_endIndex = inputphrase.indexOf(time_text_end);
+                // Do a map so we can work around blank lines
+                const sortedA = [];
+                for (let i = 0; i < arrayDuplicates.length; i++) {
+                    const index = arrayDuplicates[i];
+                    sortedA.push(LM_HoldArrayA[index][0]);
+                }
 
-            // Debug see the substring
-            // Substring should only contain the first section of time window ("1 hour 40 minutes" to 2 hours 10 minutes)
-            // inputphrase.substring(time_text_startIndex,time_text_endIndex)
+                // Clear all, world, cell highlight
+                for (let i = 0; i < LM_DOM_table.children.length; i++) {
+                    if(LM_DOM_table.children[i].children[1] !== undefined){ // Account for blank rows
+                        colourCell(LM_DOM_table.children[i].children[1],"clear");
+                    }
+                }
+                // Colour cells that appear as duplicates
+                if(sortedA.length !== 0){
+                    for (let i = 0; i < sortedA.length; i++) {
+                        colourCell(LM_DOM_table.children[sortedA[i]].children[1], "alert");
+                    }
+                }
+                document.getElementById("exportOptionsSizeSelect").value = "default";
+                document.getElementById("exportOptionsRegionSelect").value = "default";
+                successMessage2.show();
+                return; // END break out function
+            }
+            // 🇼📊:null, Runs a Sort, Sorts World column from low > high, Rearranges table to sort order
+            else if(filter1==="🇼📊"){
+                // Clear blank lines
+                const tableLength = LM_DOM_table.children.length; // Get the initial length of the table
+                for (let i = tableLength - 1; i >= 0; i--) { // Start from the last child and go backwards
+                    if (LM_DOM_table.children[i].children[1] === undefined) {
+                        LM_DOM_table.children[i].remove(); // Purge node
+                    }
+                }
+                // For Loop entire table, and make a special array with [[i,w1],[i,w2],[...]] the run a array.sort on the second element
+                for (let i = 0; i < LM_DOM_table.children.length; i++) {
+                    if(LM_DOM_table.children[i].children[1] === undefined){
+                        // void
+                    }
+                    else{
+                        try {
+                            const textContent = LM_DOM_table.children[i].children[1].textContent.trim().substring(1); // [1] is World
+                            LM_HoldArrayA.push([i, textContent]);
+                        } catch (err) {
+                            console.log(err);
+                        }
+                    }
+                }
 
-            let hashours_flag = inputphrase.substring(time_text_startIndex,time_text_endIndex).indexOf("hour")
-            let multihours_flag = inputphrase.substring(time_text_startIndex,time_text_endIndex).indexOf("hours")
-            // Get minutes
-            let minutes_to_star = 0;
-            let minutes_index = inputphrase.substring(time_text_startIndex,time_text_endIndex).indexOf("minute")
-            if(multihours_flag>-1){
-                minutes_to_star = parseInt(replaceOCRN(inputphrase.substring(time_text_startIndex,time_text_endIndex).substring(multihours_flag+5,minutes_index)), 10);
-                minutes_to_star += 120;
-            } 
-            else if (multihours_flag===-1 && hashours_flag>-1){
-                minutes_to_star = parseInt(replaceOCRN(inputphrase.substring(time_text_startIndex,time_text_endIndex).substring(hashours_flag+4,minutes_index)), 10);
-                minutes_to_star += 60;
-            } 
-            else if(minutes_index===-1){//when the timer is sub 1 hour, the time is displayed as (45 to 50 minutes)
-                minutes_to_star = parseInt(replaceOCRN(inputphrase.substring(time_text_startIndex,time_text_endIndex)), 10);
-                //console.log(minutes_to_star);
-            } 
-            else {
-                minutes_to_star = parseInt(replaceOCRN(inputphrase.substring(time_text_startIndex,time_text_endIndex).substring(0,minutes_index)), 10);
-            }
-            //========================== TIME_END
+                const mapArray = [];
+                for (let i = 0; i < LM_HoldArrayA.length; i++) {
+                    mapArray[i] = i ;
+                }
 
-            //========================== STAR_SIZE_START
-            const size_text_start = "be";
-            let size_text_startIndex = inputphrase.indexOf(size_text_start) + 2;
-            let size_of_star = "ERROR-UNDEF-SIZE";
-            if(inputphrase.substring(size_text_startIndex).indexOf("size") === 1){
-                // Tier 3 telescope
-                size_of_star = parseInt(inputphrase.substring(size_text_startIndex+5), 10);
-            }
-            else {
-                // if ladder to find size text
-                // Tier 1 telescope
-                if(inputphrase.substring(size_text_startIndex).indexOf("small") > -1){
-                    size_of_star = "Small";
-                }
-                if(inputphrase.substring(size_text_startIndex).indexOf("average") > -1){
-                    size_of_star = "Average";
-                }
-                if(inputphrase.substring(size_text_startIndex).indexOf("big") > -1){
-                    size_of_star = "Big";
-                }
-                // Tier 2 telescope
-                // Placed after to override if using a tier 2 telescope values, don't use this
-                if(inputphrase.substring(size_text_startIndex).indexOf("very small") > -1){
-                    size_of_star = "Small";
-                }
-                if(inputphrase.substring(size_text_startIndex).indexOf("fairly small") > -1){
-                    size_of_star = "Small";
-                }
-                if(inputphrase.substring(size_text_startIndex).indexOf("fairly big") > -1){
-                    size_of_star = "Average";
-                }
-                if(inputphrase.substring(size_text_startIndex).indexOf("very big") > -1){
-                    size_of_star = "Big";
-                }
-            }
-            //========================== STAR_SIZE_END
+                if(LM_HoldArrayA.length > 0){
+                    const sortedArrayA = mapArray.sort((a, b) => {
+                        const numA = Number(LM_HoldArrayA[a][1]);
+                        const numB = Number(LM_HoldArrayA[b][1]);
 
-            //========================== RELATIVE_TIME_START
-            // Calculate "relative-time"
-            // Convert the minutes to milliseconds
-            let the_skyfall = minutes_to_star *60*1000;
-            // Add the time of the message + milliseconds to when star will fall
-            let when_it_crumbles = Number(tsCell.textContent) + the_skyfall;
-            // Get the current time of export to the last whole minute
-            let we_will_stand_tall = Math.floor((Date.now()/1000)/60)*60*1000;
-            // Minus the time when the star will fall to current time
-            let face_it_all_together = when_it_crumbles - we_will_stand_tall;
-            // Convert the time milliseconds back to minutes
-            let at_skyfall = face_it_all_together/60/1000;
-            let esStarfall = at_skyfall;
-            // Catch all, of 1 minute as the minimum
-            if(at_skyfall < 1){
-                at_skyfall = 1;
-            }
-            if(isNaN(at_skyfall)){
-                at_skyfall = 1;
-            }
-            //console.log(at_skyfall)
-            //========================== RELATIVE_TIME_END
+                        // Check if both are numbers
+                        if (!isNaN(numA) && !isNaN(numB)) {
+                            return numA - numB; // Sort numerically
+                        } else if (isNaN(numA) && isNaN(numB)) {
+                            return String(LM_HoldArrayA[a][1]).localeCompare(LM_HoldArrayA[b][1]); // Sort alphabetically
+                        } else if (isNaN(numA) && !isNaN(numB)) {
+                            return 1; // Non-numeric comes after numeric
+                        } else {
+                            return -1; // Numeric comes before non-numeric
+                        }
+                    });
 
-            //========================== DATA TO SEND TO DISCORD
-            // Format  /call world: 50 region: Kharidian Desert size: 8 relative-time: 50
-            // Generate the formatted string
-            let generatedString = `/call world: ${column1Data} region: ${location_of_star} size: ${size_of_star} relative-time: ${at_skyfall}`;
-            //========================== DISCORD_END
-            
-            //========================== EXPORT_STATUS_START
-            // Process 'ES' Colour Statuses, Bootstrap color names
-            let finalStatusCount = 0;
-            esCell.classList.add("no-wrap");//Fix for chrome, not needed in firefox.
-            esCell.textContent = " ";// Clear ES cell
-            // Check World
-            if(isNaN(column1Data) || column1Data >= 260){
-                colourCell(cell1, "danger");
-                colourCell(esCell, "danger");
-                colourCell(aCell, "danger");
-                esCell.textContent += "W";
-            }
-            else{
-                colourCell(cell1, "info");
-                finalStatusCount += 1;
-            }
-            // Check Transcript
-            if(isNaN(size_of_star) || location_of_star === "ERROR-UNDEF-LOC" || size_of_star === "ERROR-UNDEF-SIZE"){
-                if(location_of_star === "ERROR-UNDEF-LOC"){
-                    esCell.textContent += "L";
-                }
-                if(size_of_star !== "Small" && size_of_star !== "Average" && size_of_star !== "Big"){
-                    colourCell(cell2, "danger");
-                    colourCell(esCell, "danger");
-                    colourCell(aCell, "danger");
-                    esCell.textContent += "S";
+                    const tbody_sort = LM_DOM_table;
+                    const rowsArray_sort = Array.from(tbody_sort.children);
+
+                    const sortedA = []; // Redundant sortedA
+                    for (let i = 0; i < sortedArrayA.length; i++) {
+                        const index = sortedArrayA[i];
+                        sortedA.push(LM_HoldArrayA[index]);
+                    }
+                    const sortedB = [];
+                    for (let i = 0; i < sortedArrayA.length; i++) {
+                        const index = sortedArrayA[i];
+                        sortedB.push(rowsArray_sort[index]);
+                    }
+
+                    // Clear the tbody
+                    tbody_sort.replaceChildren();
+
+                    // Append the rows back to the tbody
+                    for (let i = 0; i < sortedB.length; i++) {
+                        tbody_sort.appendChild(sortedB[i]);
+                    }
                 }
                 else{
-                    colourCell(cell2, "info");
-                    finalStatusCount += 1;
+                    console.log("Nothing to sort. [World]");
                 }
-            }
-            else{
-                colourCell(cell2, "info");
-                finalStatusCount += 1;
-            }
-            // Success Status
-            if(finalStatusCount === 2){// All is ok
-                colourCell(cell1, "info");
-                colourCell(cell2, "info");
-                colourCell(esCell, "success");
-                colourCell(aCell, "success");
-            }
-            // Update Status Colour, for Time <= 1
-            esStarfall = esStarfall * -1;// FLIP POS NEG
-            esStarfall = (esStarfall<0?"":"+") + esStarfall
-            if(at_skyfall === 1 && finalStatusCount === 2){ // Add time in minus to status on export
-                esCell.textContent += `[T${esStarfall}]`;
-                colourCell(esCell, "warning");
-                colourCell(cell2, "warning");
-            }
-            else if(at_skyfall === 1){ // Keep ES colour in Error state
-                esCell.textContent += `[T${esStarfall}]`;
-                colourCell(cell2, "warning");
-            }
-            else{
-                esCell.textContent += `[T${esStarfall}]`; // Positive time T-MINUS, not yet T+PLUS
-            }
+                document.getElementById("exportOptionsSizeSelect").value = "default";
+                document.getElementById("exportOptionsRegionSelect").value = "default";
+                successMessage2.show();
+                return; // END break out function
 
-            // Handle Over Time, Time > 2 hours not possible, 120mins
-            if(minutes_to_star >= 121){
-                esCell.textContent += " OT"
-                colourCell(cell2, "danger");
-                colourCell(esCell, "danger");
-                colourCell(aCell, "danger");
             }
-
-            //========================== EXPORT_STATUS_END
-
-            // Copy to clipboard
-            navigator.clipboard.writeText(generatedString).then(() => {
-                //alert("Copied to clipboard: " + generatedString);
-                console.info("Copied to clipboard: ", generatedString);
-            }).catch((err) => {
-                console.error("Error copying to clipboard: ", err);
-            });
-        }
-        //========================== MAIN_GEN_FUNCTION_START
-        
-        //========================== GENERAL_HELPER_FUNCTIONS_START
-        // Replace OCR mistaken Letters for Numbers
-        function replaceOCRN(input) { 
-            let processedOCRN = input.replace(/\s+/g, '') // Remove spaces
-                                     .replace(/I/g, '1')   // Replace I with 1
-                                     .replace(/O/gi, '0')   // Replace Oo with 0
-                                     .replace(/S/gi, '5')   // Replace Ss with 5
-                                     .replace(/Z/gi, '2')   // Replace Zz with 2
-                                     .replace(/B/g, '8')   // Replace capital B with 8
-                                     .replace(/g/g, '9')   // Replace lowercase g with 9
-                                     .replace(/l/g, '1');   // Replace lowercase l with 1
-
-            //console.log(`processedOCRN: ${processedOCRN}`);
-            return processedOCRN;
-        }
-        // Function to colour cells for EXPORT_STATUS
-        // As per Bootstrap colors
-        function colourCell(cellFO, colourState){
-            if(colourState === "danger"){
-                cellFO.style.backgroundColor = "LightCoral";
-                cellFO.style.color = "Black";
-            }
-            else if(colourState === "info"){
-                cellFO.style.backgroundColor = "LightSkyBlue";
-                cellFO.style.color = "Black";
-            }
-            else if(colourState === "success"){
-                cellFO.style.backgroundColor = "PaleGreen";
-                cellFO.style.color = "Black";
-            }
-            else if(colourState === "warning"){
-                cellFO.style.backgroundColor = "#FED8B1";
-                cellFO.style.color = "Black";
-            }
-        }
-        // Extract the current world and convert string to manual format
-        function worldSplitter(input) { 
-            let worldInt = NaN;
-            if(input.search(/cape|caoe/)>-1){
-                worldInt = parseInt( replaceOCRN(input.substring(input.search(/cape|caoe/)+4,input.search(/cape|caoe/)+10)), 10); 
-            }
-            let processedInput = `${worldInt};${input}`;
-            return processedInput;
-        }
-        //========================== GENERAL_HELPER_FUNCTIONS_END
-        
-        //========================== BUTTONS_&_TEXTBOXES_START
-        // Event listener for the textbox button
-        document.getElementById("addRowBtn").addEventListener("click", function () {
-            // Get the input value from the textbox
-            let input = document.getElementById("csvInput").value;
-            handleInput(input);
-        });
-
-        // Event listener for the prompt button
-        document.getElementById("addRowBtnPrpt").addEventListener("click", function () {
-            // Prompt the user to enter CSV data
-            let input = prompt("Enter text in DSV format (e.g., World;Transcript):");
-            handleInput(input);
-        });
-        
-        // Event listener for the prompt button EXPERIMENTAL fullparse
-        document.getElementById("addRowFullParse").addEventListener("click", function () {
-            // Prompt the user to enter CSV data
-            let input = prompt("Enter transcript with FL world number:");
-            handleInput(worldSplitter(input));
-        });
-        // Function for the textarea onpaste
-        function onPasteExp(){
-            setTimeout(function() {
-                let input = document.getElementById("expInput").value;
-                if(input.substring(0,input.indexOf(";")) > 0 && input.indexOf("/call") === -1){
-                    // Old format, 12;Star_Transcript
-                    handleInput(input); // Straight through to old handleInput.
+            // 🇹📊:null, Runs a Sort, Sorts Landing column from low(soonest time) > high, Rearranges table to sort order
+            else if(filter1==="🇹📊"){
+                // Clear blank lines
+                const tableLength = LM_DOM_table.children.length; // Get the initial length of the table
+                for (let i = tableLength - 1; i >= 0; i--) { // Start from the last child and go backwards
+                    if (LM_DOM_table.children[i].children[1] === undefined) {
+                        LM_DOM_table.children[i].remove(); // Purge node
+                    }
                 }
-                else if (input.indexOf("/call") > -1){
-                    // '/call' pasted
-                    console.log("Detected /call pasted");
-                    // Future update.
+                // For Loop entire table, and make a special array with [[i,t1],[i,t2],[...]] the run a array.sort on the second element
+                for (let i = 0; i < LM_DOM_table.children.length; i++) {
+                    if(LM_DOM_table.children[i].children[1] === undefined){
+                        // void
+                    }
+                    else{
+                        try{
+                            const textContent = LM_DOM_table.children[i].children[8].textContent.trim(); // [8] is hidden Landing Unix time
+                            LM_HoldArrayA.push([i,textContent]);
+                        }catch(err){
+                            console.log(err);
+                        }
+                    }
+                }
+                const mapArray = [];
+                for (let i = 0; i < LM_HoldArrayA.length; i++) {
+                    mapArray[i] = i ;
+                }
+                if(LM_HoldArrayA.length > 0){
+                    const sortedArrayA = mapArray.sort((a, b) => {
+                        const numA = Number(LM_HoldArrayA[a][1]);
+                        const numB = Number(LM_HoldArrayA[b][1]);
+
+                        // Check if both are numbers
+                        if (!isNaN(numA) && !isNaN(numB)) {
+                            return numA - numB; // Sort numerically
+                        } else if (isNaN(numA) && isNaN(numB)) {
+                            return String(LM_HoldArrayA[a][1]).localeCompare(LM_HoldArrayA[b][1]); // Sort alphabetically
+                        } else if (isNaN(numA) && !isNaN(numB)) {
+                            return 1; // Non-numeric comes after numeric
+                        } else {
+                            return -1; // Numeric comes before non-numeric
+                        }
+                    });
+
+                    const tbody_sort = LM_DOM_table;
+                    const rowsArray_sort = Array.from(tbody_sort.children);
+
+                    const sortedArrayB = [];
+                    for (let i = 0; i < sortedArrayA.length; i++) {
+                        const index = sortedArrayA[i];
+                        sortedArrayB.push(rowsArray_sort[index]);
+                    }
+
+                    // Clear the tbody
+                    tbody_sort.replaceChildren();
+                    // tbody_sort.innerHTML = '';
+
+                    // Append the rows back to the tbody
+                    for (let i = 0; i < sortedArrayB.length; i++) {
+                        tbody_sort.appendChild(sortedArrayB[i]);
+                    }
                 }
                 else{
-                    // New Format.
-                    handleInput(worldSplitter(input));
+                    console.log("Nothing to sort. [Landing]");
                 }
-                document.getElementById("expInput").value = "";
-            }, 0); // Delay of 0 milliseconds to ensure it runs after 
-        }
-        function setOnPastePlaceholder(){
-            document.getElementById("expInput").placeholder = "PASTE AREA, Paste here!                                                    ​                                                   ​                                                   You see a shooting star! ... ... looks to be size 10. Friends List RuneScape 39";
-        }
-        //========================== BUTTONS_&_TEXTBOXES_END
-        
-        //========================== ACTIVITY_INDICATOR_START
-        function activityColourFlipper(){
-            if(activityIndColour === 0){
-                activityIndColour = 1;
-                document.getElementById('statusCell').style.backgroundColor = 'lightblue';
-                document.getElementById('statusCell').placeholder = "  🔭"
+                document.getElementById("exportOptionsSizeSelect").value = "default";
+                document.getElementById("exportOptionsRegionSelect").value = "default";
+                successMessage2.show();
+                return; // END break out function
+
             }
-            else{
-                activityIndColour = 0;
-                document.getElementById('statusCell').style.backgroundColor = 'lightgreen';
-                document.getElementById('statusCell').placeholder = "  ☄️"
+            // 🇸📊:null, Runs a Sort, Sorts Size column from letters(#Err;Big-Small) > high(s10) > low(s1), Rearranges table to sort order
+            else if(filter1==="🇸📊"){
+                // Clear Blank lines for Sort.
+                const tableLength = LM_DOM_table.children.length; // Get the initial length of the table
+                for (let i = tableLength - 1; i >= 0; i--) { // Start from the last child and go backwards
+                    if (LM_DOM_table.children[i].children[1] === undefined) {
+                        LM_DOM_table.children[i].remove(); // Purge node
+                    }
+                }
+
+                LL_func_sort_size();
+
+                function LL_func_sort_size(){
+                    for (let i = 0; i < LM_DOM_table.children.length; i++) {
+                        if(LM_DOM_table.children[i].children[1] === undefined){
+                            // void
+                        }else{
+                            try{
+                                let textContent = LM_DOM_table.children[i].children[3].textContent.trim().substring(1).trim(); // [3] is Size
+                                if (isNaN(Number(textContent))) {
+                                    textContent = textContent.indexOf("Very Big") > -1 ? "A" : textContent;
+                                    textContent = textContent.indexOf("Fairly Big") > -1 ? "C" : textContent;
+                                    textContent = textContent.indexOf("Fairly Small") > -1 ? "E" : textContent;
+                                    textContent = textContent.indexOf("Very Small") > -1 ? "G" : textContent;
+                                    textContent = textContent.indexOf("Big") > -1 ? "B" : textContent;
+                                    textContent = textContent.indexOf("Average") > -1 ? "D" : textContent;
+                                    textContent = textContent.indexOf("Small") > -1 ? "F" : textContent;
+                                }
+                                LM_HoldArrayA.push([i,textContent]);
+                            }catch(err){
+                                console.log(err);
+                            }
+                        }
+                    }
+                    const mapArray = [];
+                    for (let i = 0; i < LM_HoldArrayA.length; i++) {
+                        mapArray[i] = i ;
+                    }
+                    if(LM_HoldArrayA.length > 0){
+                        const sortedArrayA = mapArray.sort((a, b) => {
+                            // Reverse order thus b,a
+                            const numA = Number(LM_HoldArrayA[b][1]);
+                            const numB = Number(LM_HoldArrayA[a][1]);
+
+                            // Check if both are numbers
+                            if (!isNaN(numA) && !isNaN(numB)) {
+                                return numA - numB; // Sort numerically
+                            } else if (isNaN(numA) && isNaN(numB)) {
+                                return String(LM_HoldArrayA[a][1]).localeCompare(LM_HoldArrayA[b][1]); // Sort alphabetically
+                            } else if (isNaN(numA) && !isNaN(numB)) {
+                                return 1; // Non-numeric comes after numeric
+                            } else {
+                                return -1; // Numeric comes before non-numeric
+                            }
+                        });
+
+                        const tbody_sort = LM_DOM_table;
+                        const rowsArray_sort = Array.from(tbody_sort.children);
+
+                        const sortedArrayB = [];
+                        for (let i = 0; i < sortedArrayA.length; i++) {
+                            const index = sortedArrayA[i];
+                            sortedArrayB.push(rowsArray_sort[index]);
+                        }
+
+                        // Clear the tbody
+                        tbody_sort.replaceChildren();
+                        //tbody_sort.innerHTML = '';
+
+                        // Append the rows back to the tbody
+                        for (let i = 0; i < sortedArrayB.length; i++) {
+                            if(typeof sortedArrayB[i] === "object" ){
+                                tbody_sort.appendChild(sortedArrayB[i]);
+                            }
+                        }
+                    }
+                    else{
+                        console.log("Nothing to sort. [Size]");
+                    }
+                }
+                document.getElementById("exportOptionsSizeSelect").value = "default";
+                document.getElementById("exportOptionsRegionSelect").value = "default";
+                successMessage2.show();
+                return; // END break out function
             }
-        }
-    
-        function activityUpdate(){
-            document.getElementById('status_lastworld').innerHTML = "Last World Scoped: " + lastWorldScoped;
-            if(activityIndChange !== lastWorldScoped){
-                activityColourFlipper();
-                activityIndChange = lastWorldScoped;
+            // ⛔:null, Returns Errors report
+            else if(filter1==="⛔"){
+                for (let i = 0; i < LM_DOM_table.children.length; i++) {
+                    const textContent = LM_DOM_table.children[i].children[5].children[0].children[0].textContent; // PS Column
+                    if (textContent.includes("⛔")) {
+                        LM_HoldArrayA.push(i);
+                    }
+                }
+                if(LM_HoldArrayA.length > 0){
+                    LM_report += "Error report - ";
+                    LM_report += new Date().toISOString();
+                    LM_report += ":\n";
+                    LM_report += "\n";
+                    LM_report += "Tool state:\n";
+                    // Global variables, checkboxes
+                    LM_report += `GP:${G_progress_bar} LW:${lastWorldScoped} TL:${LM_DOM_table.children.length}\n`;
+                    LM_report += `GW:${G_waveTimeLimit} GA:${G_alarm_time} GA2:${G_alarm2_time} GA3:${G_alarm3_time}\n`;
+                    LM_report += `chbx1:${document.getElementById("chbx1").checked} chbx2:${funcChb2()} chbx3:${funcChb3()} chbx4:${funcChb4()}\n`;
+                    LM_report += "\n";
+                    LM_report += "Parsed input:\n";
+                    LM_report += L_func_BuildReport(LM_HoldArrayA,"parsed_input");
+                    LM_report += "\n";
+                    LM_report += "Export:\n";
+                    LM_report += L_func_BuildReport(LM_HoldArrayA,"export");
+                    LM_report += "\n";
+                    LM_report += "Report:\n";
+                    LM_report += L_func_BuildReport(LM_HoldArrayA,"whole");
+                }else{
+                    LM_report += "Error report:\n";
+                    LM_report += "No errors found.\n";
+                }
             }
-            else{
-                activityIndChange = lastWorldScoped;
+            // !default:!default, Handles all other 2 filter query report, including default:size query report
+            else if(filter1!=="default" || filter2!=="default"){
+                LM_report = LL_func_query_report(filter1,filter2);
             }
-        }
-        //========================== ACTIVITY_INDICATOR_END
-        
-        //========================== UTC_CLOCK_START
-        function startUTCClock() {
-            const today = new Date();
-            let h = today.getUTCHours();
-            let m = today.getUTCMinutes();
-            //let s = today.getSeconds();
-            h = checkTime(h);
-            m = checkTime(m);
-            //s = checkTime(s);
-            document.getElementById('utc_clock').innerHTML = "<a title=\"The current in-game time\">UTC:</a> " + h + ":" + m;
-            setTimeout(startUTCClock, 1000);//60000=1min
+            function LL_func_query_report(filter1,filter2){
+                const l_filter1 = String(filter1);
+                const l_filter2 = String(filter2);
+
+                let HoldArrayA = [];
+                let HoldArrayB = [];
+                let OutputText = "";
+
+                if (filter1!=="default" || filter2!=="default"){ // Filter1 = Region, Filter2 = Size
+                    // F1 true  F2 true
+                    // F1 false F2 true
+                    // F1 true  F2 false
+                    // F1 false F2 false
+                    // 4 states, false false = default default
+                    // therefore 3 states
+
+                    // DO NOTHING HERE just the catch-all entry
+                    // void
+                    console.log(`Query Error: filter1:${filter1} filter2:${filter2}`);
+                }
+
+                if (filter1 !== "default" && filter2 !== "default"){ // Region + Size
+                    HoldArrayA = L_func_searchWholeTable(l_filter1,"R");
+                    HoldArrayB = L_func_ReSearchArray(HoldArrayA,l_filter2,"S");
+                    OutputText = L_func_BuildReport(HoldArrayB,"whole");
+                }
+                else if (filter1 !== "default" && filter2 === "default"){ // Region Only
+                    HoldArrayA = L_func_searchWholeTable(l_filter1,"R");
+                    OutputText = L_func_BuildReport(HoldArrayA,"whole");
+
+                }
+                else if (filter1 === "default" && filter2 !== "default"){ // Size Only
+                    HoldArrayA = L_func_searchWholeTable(l_filter2,"S");
+                    OutputText = L_func_BuildReport(HoldArrayA,"whole");
+                }
+
+                return OutputText;
+            }
+
+            copyToClipboard(LM_report);
+
+            document.getElementById("expInput").focus();
         }
 
-        function checkTime(i) {
-            if (i < 10) {i = "0" + i};  // Add zero in front of numbers < 10
-            return i;
+        document.getElementById("exportOptionsSizeSelect").value = "default";
+        document.getElementById("exportOptionsRegionSelect").value = "default";
+        if(filter1 === "🇼📊" || filter1 === "🇸📊" || filter1 === "🇹📊" || filter1 === "🇩📊"){
+            // Display sorting success message
+            // Should never get here as exit early with "return"
+            successMessage2.show();
         }
-        //========================== UTC_CLOCK_END
-        
-        //========================== THEME_BUTTONS_START
-        document.getElementById("toggleTheme").addEventListener("click", function () {
-            document.getElementsByTagName("body")[0].classList.toggle("darktheme");
-            document.getElementsByTagName("input")[0].classList.toggle("darktheme");
-            document.getElementsByTagName("input")[4].classList.toggle("darkthemeTextBox");//1
-            document.getElementsByTagName("textarea")[0].classList.toggle("darkthemeTextBox");
-            document.getElementById("input_header").classList.toggle("ih_default");
-            document.getElementById("input_header").classList.toggle("darktheme");
-        });
-        document.getElementById("toggleMonospace").addEventListener("click", function () {
-            // Toggle monospace font
-            document.getElementsByTagName("body")[0].classList.toggle("monospace");
-        });
-        //========================== THEME_BUTTONS_END
+        else{
+            // Display general success message
+            successMessage.show();
+        }
 
-        //========================== SETTINGS_BOX_START
-        document.getElementById("chbx1").addEventListener("click", funcChb1);
-        document.getElementById("chbx2").addEventListener("click", funcChb2);
-        document.getElementById("chbx3").addEventListener("click", funcChb3);
-        function funcChb1() {
-            //input_header
+        // END
+
+        // Local functions
+        function L_func_searchWholeTable(searchTerm,searchField){
+            const functionHoldArray = [];
+            let mode = 0;
+
+            if(searchField === "S"){ // Easy place to set options
+                mode = 1;
+            }else if(searchField === "R"){
+                mode = 2;
+            }
+
+            for (let i = 0; i < LM_DOM_table.children.length; i++) {
+                let textContent = "";
+                if(mode === 1){
+                    try{
+                        textContent = LM_DOM_table.children[i].children[3].textContent; // [3] is Size
+                    }catch(err) {
+                        // void
+                    }
+                }else if(mode === 2){
+                    try{
+                        textContent = LM_DOM_table.children[i].children[2].textContent; // [2] is region
+                    }catch(err) {
+                        // void
+                    }
+                }
+
+                if (textContent.includes(String(searchTerm)) ) {
+                    // console.log(`Found in row ${i}: ${textContent}`);
+                    functionHoldArray.push(i);
+                }
+            }
+
+            return functionHoldArray; // return array
+        }
+
+        function L_func_ReSearchArray(searchArray,searchTerm,searchField){
+            const functionHoldArray = [];
+            let mode = 0;
+
+            if(searchField === "S"){ // Easy place to set options
+                mode = 1;
+            }else if(searchField === "R"){
+                mode = 2;
+            }
+
+            for (let i = 0; i < searchArray.length; i++) {
+                let textContent = "";
+                if(mode === 1){
+                    try{
+                        textContent = LM_DOM_table.children[searchArray[i]].children[3].textContent; // [3] is Size
+                    }catch(err) {
+                        // void
+                    }
+                }else if(mode === 2){
+                    try{
+                        textContent = LM_DOM_table.children[searchArray[i]].children[2].textContent; // [2] is region
+                    }catch(err) {
+                        // void
+                    }
+                }
+
+                if (textContent.includes(String(searchTerm)) ) {
+                    // console.log(`Found in row ${i}: ${textContent}`);
+                    functionHoldArray.push(searchArray[i]);
+                }
+            }
+
+            return functionHoldArray; // return array
+        }
+
+        function L_func_BuildReport(reportArray,reportOption){
+            let functionReportString = "";
+
+            for (let i = 0; i < reportArray.length; i++) {
+                let textContent = "";
+                if(reportOption === "whole"){ // whole string
+                    textContent = LM_DOM_table.children[reportArray[i]].children[4].children[0].children[1].textContent.trim(); // [4] cell with single report
+                }else if(reportOption === "part"){ // substring no size information
+                    textContent = LM_DOM_table.children[reportArray[i]].children[4].children[0].children[1].textContent.substring(9).trim(); // [4] cell with single report, substring(9) should cut off the "size:10" text, trim to account for 2 chars long
+                }else if(reportOption === "export"){ // 'Stargazer Export' allows exporting
+                    textContent = LM_DOM_table.children[reportArray[i]].children[7].textContent.trim(); // export row
+                    if(textContent.indexOf("«》")===-1){
+                        textContent += "》";
+                    }
+                }else if(reportOption === "parsed_input"){ // All parsed input information, used for Error report
+                    textContent = "/#/S/I/";
+                    textContent += LM_DOM_table.children[reportArray[i]].children[5].children[0].children[1].textContent; // input text
+                    textContent += "/H/";
+                    textContent += LM_DOM_table.children[reportArray[i]].children[7].textContent; // hid cell
+                    textContent += "/T/";
+                    textContent += LM_DOM_table.children[reportArray[i]].children[8].textContent; // Time parsed
+                    textContent += "/E/#/";
+                }
+
+                functionReportString += textContent;
+                functionReportString += "\n";
+            }
+
+            return functionReportString; // return report string
+        }
+
+    });
+    //======== BUTTONS_ATTACHED_TO_'buttonTableQuery'_START
+    document.getElementById('sortDupButton').addEventListener("click", function() {
+        document.getElementById("exportOptionsRegionSelect").value = "🇩📊";
+        document.getElementById('buttonTableQuery').click();
+        document.getElementById("expInput").focus(); // Refocus
+    });
+    document.getElementById('sortWorldButton').addEventListener("click", function() {
+        document.getElementById("exportOptionsRegionSelect").value = "🇼📊";
+        document.getElementById('buttonTableQuery').click();
+        document.getElementById("expInput").focus(); // Refocus
+    });
+    document.getElementById('sortSizeButton').addEventListener("click", function() {
+        document.getElementById("exportOptionsRegionSelect").value = "🇸📊";
+        document.getElementById('buttonTableQuery').click();
+        document.getElementById("expInput").focus(); // Refocus
+    });
+    document.getElementById('sortTimeButton').addEventListener("click", function() {
+        document.getElementById("exportOptionsRegionSelect").value = "🇹📊";
+        document.getElementById('buttonTableQuery').click();
+        document.getElementById("expInput").focus(); // Refocus
+    });
+    document.getElementById('exportTable7plusButton').addEventListener("click", function() {
+        document.getElementById("exportOptionsRegionSelect").value = "7️⃣";
+        document.getElementById('buttonTableQuery').click();
+    });
+    //======== BUTTONS_ATTACHED_TO_'buttonTableQuery'_END
+    //=== 'Stargazer Export'
+    document.getElementById('exportTableButton').addEventListener("click", function() {
+        let exportText = "";
+        const table = document.getElementById("datatable").getElementsByTagName("tbody")[0];
+
+        if(funcChb3()===false){
+            for(let i = 0; i < table.children.length; i++){
+                if(table.children[i].children[7] !== undefined && table.children[i].children[7].textContent.indexOf("«》")===-1){
+                    exportText += table.children[i].children[7].textContent;
+                    exportText += "》";
+                }
+                else if(table.children[i].children[7] === undefined){
+                    // void
+                }
+                else{
+                    exportText += table.children[i].children[7].textContent;
+                }
+            }
+        }
+        else{
+            for(let i = table.children.length - 1; i >= 0; i--){
+                if(table.children[i].children[7] !== undefined && table.children[i].children[7].textContent.indexOf("«》")===-1){
+                    exportText += table.children[i].children[7].textContent;
+                    exportText += "》";
+                }
+                else if(table.children[i].children[7] === undefined){
+                    // void
+                }
+                else{
+                    exportText += table.children[i].children[7].textContent;
+                }
+            }
+        }
+
+        // console.log(exportText);
+        copyToClipboard(exportText);
+
+        document.getElementById("expInput").focus();
+        document.getElementById("SGTEButtonSuccess").show();
+
+
+    });
+    //========================== OPTIONS_BOX_END
+
+    //========================== CHECKBOX_START
+    document.getElementById("chbx1").addEventListener("click", function() {
+        document.getElementById("expInput").focus();
+        funcChb1();
+    });
+    document.getElementById("chbx2").addEventListener("click", function() {
+        document.getElementById("expInput").focus();
+        funcChb2();
+    });
+    document.getElementById("chbx3").addEventListener("click", function() {
+        document.getElementById("expInput").focus();
+        funcChb3();
+    });
+    document.getElementById("chbx4").addEventListener("click", function() {
+        document.getElementById("expInput").focus();
+        funcChb4();
+    });
+
+    function funcChb1() {
+        // input_header
+        if(document.getElementById("chbx1").checked){
+            document.getElementById("input_header").classList.add("input_header");
+            jsMediaQueryMain(); // Force Media Query update
+        }
+        else{
+            document.getElementById("input_header").classList.remove("input_header");
+            jsMediaQueryMain(); // Force Media Query update
+        }
+    }
+    function funcChb2() {
+        return document.getElementById("chbx2").checked;
+    }
+    function funcChb3() {
+        return document.getElementById("chbx3").checked;
+    }
+    function funcChb4() {
+        return document.getElementById("chbx4").checked;
+    }
+    //========================== CHECKBOX_END
+
+    //========================== MISCELLANEOUS_FUNCTIONS_START
+    // Scroll to top of page, (0,0)
+    function activateScrollToTop(){
+        window.scrollTo({
+            top: 0,
+            left: 0,
+            behavior: "smooth",
+        });
+    }
+    // Update progress bar, calculate number of table entries / 92 Approx all P2P stars
+    function updateProgressBar(){
+        G_progress_bar = (document.getElementById("datatable").getElementsByTagName("tbody")[0].children.length/91)*100;
+        document.getElementById("potatobar").value = G_progress_bar;
+    }
+    // Single pip audio cue at 450Hz
+    function pip() {
+        const audioCtx = new AudioContext();
+        function playPip() {
+            const oscillator = audioCtx.createOscillator();
+            oscillator.frequency.setValueAtTime(450, audioCtx.currentTime);
+            oscillator.connect(audioCtx.destination);
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.1); // Beep for 0.1 seconds
+        }
+        playPip();
+    }
+    // Audio 5 pips (0.1s) 1 pip (0.5s) at 1kHz
+    function activatePIPS() {
+        const audioCtx = new AudioContext();
+        function playPip() {
+            const oscillator = audioCtx.createOscillator();
+            oscillator.frequency.setValueAtTime(1000, audioCtx.currentTime);
+            oscillator.connect(audioCtx.destination);
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.1); // Beep for 0.1 seconds
+        }
+        function playLongPip() {
+            const oscillator = audioCtx.createOscillator();
+            oscillator.frequency.setValueAtTime(1000, audioCtx.currentTime);
+            oscillator.connect(audioCtx.destination);
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.5); // Beep for 0.5 seconds
+        }
+        let loopCount = 0;
+        const intervalID = setInterval(() => {
+            // console.log("Executed every 1 second");
+            if(loopCount < 5){
+                playPip();
+                loopCount ++;
+            }
+            else if(loopCount === 5){ // 6th loop counting from 0
+                playLongPip();
+                clearInterval(intervalID); // Exit LOOP, Terminate the interval
+            }
+        }, 1000);
+    }
+    // Force resync of Relative Time fields, rare occurrence
+    function resync_SlRelativeTime(){
+        for (let i = 0; i < document.getElementsByTagName("sl-relative-time").length; i++) {
+            document.getElementsByTagName("sl-relative-time")[i].removeAttribute("sync");
+            document.getElementsByTagName("sl-relative-time")[i].setAttribute("sync", "");
+        }
+    }
+    // Get Wave time
+    // Unreferenced / no usages
+    function F_getWaveTime(){
+        if(G_alarm_time !== 0){
+            const getWave = `<t:${G_alarm_time}:R> | <t:${G_alarm_time}:F> | \`${new Date(G_waveTimeLimit).toISOString()}\``;
+            console.log(getWave);
+            copyToClipboard(getWave);
+        }else{
+            console.log("No wave time set.");
+        }
+    }
+    // Debug beep
+    function beep() {
+        pip();
+    }
+    // Media query from Javascript
+    function jsMediaQueryMain() {
+        const x1056 = window.matchMedia("(max-width: 1056px)");
+        const x660 = window.matchMedia("(max-width: 660px)");
+        if (x660.matches) { // If max-width is 660px or less
             if(document.getElementById("chbx1").checked){
-                document.getElementById("input_header").classList.add("input_header");
-            }
-            else{
-                document.getElementById("input_header").classList.remove("input_header");
-            }
-        }
-        function funcChb2() {
-            return document.getElementById("chbx2").checked;
-        }
-        function funcChb3() {
-            return document.getElementById("chbx3").checked;
-        }
-        //========================== SETTINGS_BOX_END
+                document.getElementById("statusBoxMainDiv").classList.remove("sbPinFloat");
+                document.getElementById("statusBoxA").classList.remove("sbPinFloatA");
+                document.getElementById("statusBoxB").classList.remove("sbPinFloatB");
+                document.getElementById("statusBoxC").classList.remove("sbPinFloatC");
 
-        //========================== LOAD_AT_PAGELOAD
-        window.addEventListener("load", setOnPastePlaceholder);//For Safari.
-        window.addEventListener("load", startUTCClock);// Load UTC clock when page is fully loaded
-        window.addEventListener("load", activityUpdate);//trigger once for UI
-        window.addEventListener("load", funcChb1);// Initial input header
-        window.addEventListener("load", funcChb2);// Generate on paste
-        window.addEventListener("load", funcChb3);// Invert table entry
-    </script>
+                document.getElementById("statusBoxMainDiv").classList.add("sbPinFloatUnlocked");
+
+                document.getElementById("statusBoxA").children[0].open = false;
+                document.getElementById("statusBoxB").children[0].open = false;
+                document.getElementById("statusBoxC").children[0].open = false;
+
+                document.getElementById("input_header").scrollIntoView({ behavior: "smooth",});
+            }
+            else{ // chbx1 false
+                document.getElementById("statusBoxMainDiv").classList.remove("sbPinFloat");
+                document.getElementById("statusBoxMainDiv").classList.add("sbPinFloatUnlocked");
+            }
+        }
+        else if (x1056.matches) { // If max-width is 1056px or less
+            if(document.getElementById("chbx1").checked){
+                document.getElementById("statusBoxMainDiv").classList.remove("sbPinFloat");
+                document.getElementById("statusBoxMainDiv").classList.remove("sbPinFloatUnlocked");
+
+                document.getElementById("statusBoxA").classList.add("sbPinFloatA");
+                document.getElementById("statusBoxB").classList.add("sbPinFloatB");
+                document.getElementById("statusBoxC").classList.add("sbPinFloatC");
+
+                document.getElementById("statusBoxB").children[0].open = false;
+                document.getElementById("statusBoxA").children[0].open = true;
+                document.getElementById("statusBoxC").children[0].open = true;
+
+                window.scrollTo(0,0);
+                document.getElementById("input_header").scrollIntoView({ behavior: "smooth",});
+            }
+            else {
+                document.getElementById("statusBoxMainDiv").classList.remove("sbPinFloat");
+
+                document.getElementById("statusBoxA").classList.remove("sbPinFloatA");
+                document.getElementById("statusBoxB").classList.remove("sbPinFloatB");
+                document.getElementById("statusBoxC").classList.remove("sbPinFloatC");
+
+                document.getElementById("statusBoxMainDiv").classList.add("sbPinFloatUnlocked");
+            }
+        }
+        else { // If greater than 1056px
+            if(document.getElementById("chbx1").checked){
+                setTimeout(function() {
+                    activateScrollToTop();
+                }, 100);
+            }
+
+            document.getElementById("statusBoxMainDiv").classList.remove("sbPinFloatUnlocked");
+            document.getElementById("statusBoxA").classList.remove("sbPinFloatA");
+            document.getElementById("statusBoxB").classList.remove("sbPinFloatB");
+            document.getElementById("statusBoxC").classList.remove("sbPinFloatC");
+
+            document.getElementById("statusBoxMainDiv").classList.add("sbPinFloat");
+
+            document.getElementById("statusBoxB").children[0].open = true;
+            document.getElementById("statusBoxA").children[0].open = true;
+            document.getElementById("statusBoxC").children[0].open = true;
+        }
+    }
+    // Attach listener function on state changes
+    window.matchMedia("(max-width: 660px)").addEventListener("change", jsMediaQueryMain);
+    window.matchMedia("(max-width: 1056px)").addEventListener("change", jsMediaQueryMain);
+    //========================== MISCELLANEOUS_FUNCTIONS_END
+
+    //========================== ON_PAGE_LOAD_START
+    window.addEventListener("load", function() {
+        setTimeout(function() {
+            setOnPastePlaceholder(); // For Safari
+            trackUnixTimeChange(); // Load UTC clock when page is fully loaded
+            // startUTCClock();
+            activityUpdate(); // Trigger once for UI
+            funcChb1(); // Initial input header
+            funcChb2(); // Generate on paste
+            funcChb3(); // Invert table entry, hidden
+            funcChb4(); // Allow alarm audio
+
+            jsMediaQueryMain();
+            activateScrollToTop();
+
+            // Focus on Paste Area
+            document.getElementById("expInput").focus();
+        }, 100);
+    });
+    //========================== ON_PAGE_LOAD_END
+</script>
 </body>
 </html>
